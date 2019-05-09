@@ -5,20 +5,20 @@ import "time"
 // NewReactor returns a new reactor.
 func NewReactor() Reactor {
 	return Reactor{
-		CoreTemperatureKelvin:        BaseTemperatureKelvin,
-		ContainmentTemperatureKelvin: BaseTemperatureKelvin,
+		CoreTemperature:        BaseTemperature,
+		ContainmentTemperature: BaseTemperature,
 		ControlRods: []ControlRod{
 			ControlRod{Position: PositionMax},
 			ControlRod{Position: PositionMax},
 			ControlRod{Position: PositionMax},
 		},
 		Primary: Pump{
-			InletTemperatureKelvin:  BaseTemperatureKelvin,
-			OutletTemperatureKelvin: BaseTemperatureKelvin,
+			InletTemperature:  BaseTemperature,
+			OutletTemperature: BaseTemperature,
 		},
 		Secondary: Pump{
-			InletTemperatureKelvin:  BaseTemperatureKelvin,
-			OutletTemperatureKelvin: BaseTemperatureKelvin,
+			InletTemperature:  BaseTemperature,
+			OutletTemperature: BaseTemperature,
 		},
 	}
 }
@@ -27,8 +27,8 @@ func NewReactor() Reactor {
 type Reactor struct {
 	Alarm bool
 
-	ContainmentTemperatureKelvin float64
-	CoreTemperatureKelvin        float64
+	ContainmentTemperature float64
+	CoreTemperature        float64
 
 	ControlRods []ControlRod
 	Primary     Pump

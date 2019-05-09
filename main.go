@@ -221,8 +221,8 @@ func RenderLoop(s *reactor.Simulation) func() error {
 				alarm.TextBgColor = ui.ColorRed
 			}
 			output.Text = fmt.Sprintf("%2.fkw/hr", s.Reactor.Turbine.Output())
-			coreTemp.Text = fmt.Sprintf("%2.fk", s.Reactor.CoreTemperatureKelvin)
-			outerTemp.Text = fmt.Sprintf("%2.fk", s.Reactor.ContainmentTemperatureKelvin)
+			coreTemp.Text = fmt.Sprintf("%2.fc", s.Reactor.CoreTemperature)
+			outerTemp.Text = fmt.Sprintf("%2.fc", s.Reactor.ContainmentTemperature)
 			turbineSpeed.Text = fmt.Sprintf("%2.frpm", s.Reactor.Turbine.SpeedRPM)
 
 			command.Text = "> " + s.Command

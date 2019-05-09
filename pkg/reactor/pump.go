@@ -4,9 +4,9 @@ import "time"
 
 // Pump moves coolant around.
 type Pump struct {
-	Throttle                Position
-	InletTemperatureKelvin  float64
-	OutletTemperatureKelvin float64
+	Throttle          Position
+	InletTemperature  float64
+	OutletTemperature float64
 }
 
 // Simulate processes a simulation tick.

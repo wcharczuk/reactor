@@ -8,8 +8,8 @@ const (
 
 	// TurbineOutputPerRPM is a constant
 	TurbineOutputPerRPM = 10
-	// BaseTemperatureKelvin is the starting reactor core temperature.
-	BaseTemperatureKelvin = 290
+	// BaseTemperature is the starting reactor core temperature.
+	BaseTemperature = 20
 	// TemperatureTransferRateMinute is how much of a difference in temperatures
 	// is transfered per minute.
 	TemperatureTransferRateMinute = 0.5

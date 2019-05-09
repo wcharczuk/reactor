@@ -12,7 +12,7 @@ func NewPositionChange(label string, position *Position, desired Position, quant
 		Label:    label,
 		Desired:  desired,
 		Original: *position,
-		Rate:     NewPositionChangeRate(float64(*position), float64(desired), quantum),
+		Rate:     NewLinearChange(float64(*position), float64(desired), quantum),
 		done:     make(chan struct{}),
 	}
 }
@@ -23,7 +23,7 @@ type PositionChange struct {
 	Label    string
 	Desired  Position
 	Original Position
-	Rate     PositionChangeRate
+	Rate     LinearChange
 	done     chan struct{}
 }
 
