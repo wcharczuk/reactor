@@ -1,22 +1,39 @@
 package reactor
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // NewSimulation returns a new simulation.
 func NewSimulation() *Simulation {
 	return &Simulation{
-		Errors:  make(chan error, 1024),
-		Reactor: NewReactor(),
+		Inputs:   make(chan Input, 64),
+		Messages: make(chan Message, 64),
+		Reactor:  NewReactor(),
 	}
 }
 
 // Simulation is the entire state of a simulation.
 type Simulation struct {
-	Current time.Duration
-	Events  chan Event
-	Errors  chan error
-	Command string
-	Reactor *Reactor
+	TimeSinceStart time.Duration
+	Inputs         chan Input
+	Messages       chan Message
+	Command        string
+	Reactor        Reactor
+}
+
+// Messagef logs a message with a given format and arguments.
+func (s *Simulation) Messagef(format string, args ...interface{}) {
+	s.Message(fmt.Sprintf(format, args...))
+}
+
+// Message logs a message with a given text value.
+func (s *Simulation) Message(args ...interface{}) {
+	s.Messages <- Message{
+		Timestamp: time.Now(),
+		Text:      fmt.Sprint(args...),
+	}
 }
 
 // Simulate implements simulatable.
@@ -25,19 +42,19 @@ func (s *Simulation) Simulate(quantum time.Duration) error {
 		return err
 	}
 
-	events := len(s.Events)
+	inputs := len(s.Inputs)
 	var err error
-	var event Event
-	for x := 0; x < events; x++ {
-		event = <-s.Events
-		if err = event.Simulate(quantum); err != nil {
+	var i Input
+	for x := 0; x < inputs; x++ {
+		i = <-s.Inputs
+		if err = i.Simulate(quantum); err != nil {
 			return err
 		}
-		if !event.Done() {
-			s.Events <- event
+		if !i.Done() {
+			s.Inputs <- i
 		}
 	}
 
-	s.Current = s.Current + quantum
+	s.TimeSinceStart = s.TimeSinceStart + quantum
 	return nil
 }

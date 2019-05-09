@@ -1,12 +1,11 @@
 package reactor
 
-import "math"
-
 const (
-	// Max8 is the maximum uint8 value.
-	Max8 = math.MaxUint8
-	// Max16 is the maximum uint16 value.
-	Max16 = math.MaxUint16
+	// PositionMin is the maximum minimum value.
+	PositionMin Position = 0.0
+	// PositionMax is the maximum position value.
+	PositionMax Position = 1.0
+
 	// TurbineOutputPerRPM is a constant
 	TurbineOutputPerRPM = 10
 	// BaseTemperatureKelvin is the starting reactor core temperature.

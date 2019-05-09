@@ -10,6 +10,6 @@ type Pump struct {
 }
 
 // Simulate processes a simulation tick.
-func (p *Pump) Simulate(quantum time.Duration) error {
+func (p Pump) Simulate(quantum time.Duration) error {
 	return nil
 }

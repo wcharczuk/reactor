@@ -3,14 +3,14 @@ package reactor
 import "time"
 
 // NewReactor returns a new reactor.
-func NewReactor() *Reactor {
-	return &Reactor{
+func NewReactor() Reactor {
+	return Reactor{
 		CoreTemperatureKelvin:        BaseTemperatureKelvin,
-		ContainmentTemperatureKelvon: BaseTemperatureKelvin,
+		ContainmentTemperatureKelvin: BaseTemperatureKelvin,
 		ControlRods: []ControlRod{
-			ControlRod{Position: Max8},
-			ControlRod{Position: Max8},
-			ControlRod{Position: Max8},
+			ControlRod{Position: PositionMax},
+			ControlRod{Position: PositionMax},
+			ControlRod{Position: PositionMax},
 		},
 		Primary: Pump{
 			InletTemperatureKelvin:  BaseTemperatureKelvin,
@@ -25,7 +25,9 @@ func NewReactor() *Reactor {
 
 // Reactor is the main simulated object.
 type Reactor struct {
-	ContainmentTemperatureKelvon float64
+	Alarm bool
+
+	ContainmentTemperatureKelvin float64
 	CoreTemperatureKelvin        float64
 
 	ControlRods []ControlRod
@@ -35,6 +37,7 @@ type Reactor struct {
 }
 
 // Simulate advances the simulation by the quantum.
-func (r *Reactor) Simulate(quantum time.Duration) error {
+func (r Reactor) Simulate(quantum time.Duration) error {
+	// do the output calculation
 	return nil
 }

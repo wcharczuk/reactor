@@ -1,14 +1,14 @@
 package reactor
 
 // Position is a 0-255 value for a given control.
-type Position uint8
+type Position float64
 
-// Ratio is the ratio of the given value to the maximum.
-func (p Position) Ratio() float64 {
-	return float64(uint8(p) / Max8)
+// Control returns the uint8 (i.e. 0-255) value for a position.
+func (p Position) Control() uint8 {
+	return uint8(p * 255)
 }
 
 // Percent is the ratio * 100.
 func (p Position) Percent() float64 {
-	return p.Ratio() * 100
+	return float64(p) * 100
 }
