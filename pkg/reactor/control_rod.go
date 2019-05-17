@@ -29,7 +29,7 @@ func (cr *ControlRod) CollectAlarms(collector chan Alarm) {
 	if MaybeCreateAlarm(collector, AlarmFatal, fmt.Sprintf("Control Rod %d Temp.", cr.Index), fmt.Sprintf("Above %.2fc", ControlRodTempFatal), &cr.Temperature, ControlRodTempFatal) {
 		return
 	}
-	if MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("Control Rod %d Temp.", cr.Index), fmt.Sprintf("Above %.2fc", ControlRodTempWarning), &cr.Temperature, ControlRodTempCritical) {
+	if MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("Control Rod %d Temp.", cr.Index), fmt.Sprintf("Above %.2fc", ControlRodTempCritical), &cr.Temperature, ControlRodTempCritical) {
 		return
 	}
 	MaybeCreateAlarm(collector, AlarmWarning, fmt.Sprintf("Control Rod %d Temp.", cr.Index), fmt.Sprintf("Above %.2fc", ControlRodTempWarning), &cr.Temperature, ControlRodTempWarning)

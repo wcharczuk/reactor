@@ -31,29 +31,37 @@ type Pump struct {
 
 // CollectAlarms implements alarm provider.
 func (p *Pump) CollectAlarms(collector chan Alarm) {
-	if MaybeCreateAlarm(collector, AlarmFatal, fmt.Sprintf("%s Pump Inlet", p.Name), fmt.Sprintf("Above %.2fc", PumpInletFatal), &p.InletTemperature, PumpInletFatal) {}
-	else if MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("%s Pump Inlet", p.Name), fmt.Sprintf("Above %.2fc", PumpInletCritical), &p.InletTemperature, PumpInletCritical) {}
-	else MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("%s Pump Inlet", p.Name), fmt.Sprintf("Above %.2fc", PumpInletCritical), &p.InletTemperature, PumpInletCritical) {}
-
-	if p.InletTemperature > PumpInletFatal {
-		collector <- Alarm{Severity: AlarmFatal, Component: fmt.Sprintf("%s Pump Inlet", p.Name), Message: fmt.Sprintf("Above %.2fc", PumpInletFatal)}
-	} else if p.InletTemperature > PumpInletCritical {
-		collector <- Alarm{Severity: AlarmCritical, Component: fmt.Sprintf("%s Pump Inlet", p.Name), Message: fmt.Sprintf("Above %.2fc", PumpInletCritical)}
-	} else if p.InletTemperature > PumpInletWarning {
-		collector <- Alarm{Severity: AlarmWarning, Component: fmt.Sprintf("%s Pump Inlet", p.Name), Message: fmt.Sprintf("Above %.2fc", PumpInletWarning)}
-	}
-
-	if p.OutletTemperature > PumpOutletFatal {
-		collector <- Alarm{Severity: AlarmFatal, Component: fmt.Sprintf("%s Pump Inlet", p.Name), Message: fmt.Sprintf("Above %.2fc", PumpInletFatal)}
-	} else if p.OutletTemperature > PumpOutletCritical {
-		collector <- Alarm{Severity: AlarmCritical, Component: fmt.Sprintf("%s Pump Inlet", p.Name), Message: fmt.Sprintf("Above %.2fc", PumpInletCritical)}
-	} else if p.OutletTemperature > PumpOutletWarning {
-		collector <- Alarm{Severity: AlarmWarning, Component: fmt.Sprintf("%s Pump Inlet", p.Name), Message: fmt.Sprintf("Above %.2fc", PumpInletWarning)}
-	}
+	p.collectInletAlarms(collector)
+	p.collectOutletAlarms(collector)
 
 	if p.Throttle.IsZero() {
-		collector <- Alarm{Severity: AlarmWarning, Component: fmt.Sprintf("%s Pump Throttle", p.Name), Message: "No Flow"}
+		collector <- Alarm{
+			Severity:  AlarmWarning,
+			Component: fmt.Sprintf("%s Pump Throttle", p.Name),
+			Message:   "No Flow",
+			DoneProvider: func() bool {
+				return !p.Throttle.IsZero()
+			},
+		}
 	}
+}
+
+func (p *Pump) collectInletAlarms(collector chan Alarm) {
+	if MaybeCreateAlarm(collector, AlarmFatal, fmt.Sprintf("%s Pump Inlet", p.Name), fmt.Sprintf("Above %.2fc", PumpInletFatal), &p.InletTemperature, PumpInletFatal) {
+		return
+	} else if MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("%s Pump Inlet", p.Name), fmt.Sprintf("Above %.2fc", PumpInletCritical), &p.InletTemperature, PumpInletCritical) {
+		return
+	}
+	MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("%s Pump Inlet", p.Name), fmt.Sprintf("Above %.2fc", PumpInletCritical), &p.InletTemperature, PumpInletCritical)
+}
+
+func (p *Pump) collectOutletAlarms(collector chan Alarm) {
+	if MaybeCreateAlarm(collector, AlarmFatal, fmt.Sprintf("%s Pump Outlet", p.Name), fmt.Sprintf("Above %.2fc", PumpOutletFatal), &p.OutletTemperature, PumpOutletFatal) {
+		return
+	} else if MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("%s Pump Outlet", p.Name), fmt.Sprintf("Above %.2fc", PumpOutletCritical), &p.OutletTemperature, PumpOutletCritical) {
+		return
+	}
+	MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("%s Pump Outlet", p.Name), fmt.Sprintf("Above %.2fc", PumpOutletWarning), &p.OutletTemperature, PumpOutletWarning)
 }
 
 // Simulate processes a simulation tick.

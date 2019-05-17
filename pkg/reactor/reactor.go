@@ -42,21 +42,8 @@ type Reactor struct {
 
 // CollectAlarms fetches the current alarms.
 func (r *Reactor) CollectAlarms(collector chan Alarm) {
-	if r.ContainmentTemperature > ContainmentTempFatal {
-		collector <- Alarm{Severity: AlarmFatal, Component: "Containment", Message: fmt.Sprintf("Above %0.2fc", ContainmentTempFatal)}
-	} else if r.ContainmentTemperature > ContainmentTempCritical {
-		collector <- Alarm{Severity: AlarmCritical, Component: "Containment", Message: fmt.Sprintf("Above %0.2fc", ContainmentTempCritical)}
-	} else if r.ContainmentTemperature > ContainmentTempWarning {
-		collector <- Alarm{Severity: AlarmWarning, Component: "Containment", Message: fmt.Sprintf("Above %0.2fc", ContainmentTempWarning)}
-	}
-
-	if r.ContainmentTemperature > CoreTempFatal {
-		collector <- Alarm{Severity: AlarmFatal, Component: "Core", Message: fmt.Sprintf("Above %0.2fc", CoreTempFatal)}
-	} else if r.ContainmentTemperature > CoreTempCritical {
-		collector <- Alarm{Severity: AlarmCritical, Component: "Core", Message: fmt.Sprintf("Above %0.2fc", CoreTempCritical)}
-	} else if r.ContainmentTemperature > CoreTempWarning {
-		collector <- Alarm{Severity: AlarmWarning, Component: "Core", Message: fmt.Sprintf("Above %0.2fc", CoreTempWarning)}
-	}
+	r.collectContainmentAlarms(collector)
+	r.collectCoreAlarms(collector)
 
 	for _, cr := range r.ControlRods {
 		cr.CollectAlarms(collector)
@@ -64,6 +51,26 @@ func (r *Reactor) CollectAlarms(collector chan Alarm) {
 	r.Primary.CollectAlarms(collector)
 	r.Secondary.CollectAlarms(collector)
 	r.Turbine.CollectAlarms(collector)
+}
+
+func (r *Reactor) collectContainmentAlarms(collector chan Alarm) {
+	if MaybeCreateAlarm(collector, AlarmFatal, "Containment", fmt.Sprintf("Above %.2fc", ContainmentTempFatal), &r.ContainmentTemperature, ContainmentTempFatal) {
+		return
+	}
+	if MaybeCreateAlarm(collector, AlarmCritical, "Containment", fmt.Sprintf("Above %.2fc", ContainmentTempCritical), &r.ContainmentTemperature, ContainmentTempCritical) {
+		return
+	}
+	MaybeCreateAlarm(collector, AlarmWarning, "Containment", fmt.Sprintf("Above %.2fc", ContainmentTempWarning), &r.ContainmentTemperature, ContainmentTempWarning)
+}
+
+func (r *Reactor) collectCoreAlarms(collector chan Alarm) {
+	if MaybeCreateAlarm(collector, AlarmFatal, "Core", fmt.Sprintf("Above %.2fc", ControlRodTempFatal), &r.CoreTemperature, CoreTempFatal) {
+		return
+	}
+	if MaybeCreateAlarm(collector, AlarmCritical, "Core", fmt.Sprintf("Above %.2fc", CoreTempCritical), &r.CoreTemperature, ControlRodTempCritical) {
+		return
+	}
+	MaybeCreateAlarm(collector, AlarmWarning, "Core", fmt.Sprintf("Above %.2fc", CoreTempWarning), &r.CoreTemperature, CoreTempWarning)
 }
 
 // Simulate advances the simulation by the quantum.

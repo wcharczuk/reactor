@@ -27,13 +27,13 @@ type Turbine struct {
 
 // CollectAlarms implements alarmable.
 func (t *Turbine) CollectAlarms(collector chan Alarm) {
-	if t.SpeedRPM > TurbineRPMFatal {
-		collector <- Alarm{Severity: AlarmFatal, Component: "Turbine", Message: fmt.Sprintf("RPM Above %.2frpm", TurbineRPMFatal)}
-	} else if t.SpeedRPM > TurbineRPMCritical {
-		collector <- Alarm{Severity: AlarmCritical, Component: "Turbine", Message: fmt.Sprintf("RPM Above %.2frpm", TurbineRPMCritical)}
-	} else if t.SpeedRPM > TurbineRPMWarning {
-		collector <- Alarm{Severity: AlarmWarning, Component: "Turbine", Message: fmt.Sprintf("RPM Above %.2frpm", TurbineRPMWarning)}
+	if MaybeCreateAlarm(collector, AlarmFatal, "Turbine", fmt.Sprintf("RPM Above %.2fc", TurbineRPMFatal), &t.SpeedRPM, TurbineRPMFatal) {
+		return
 	}
+	if MaybeCreateAlarm(collector, AlarmCritical, "Turbine", fmt.Sprintf("RPM Above %.2fc", TurbineRPMCritical), &t.SpeedRPM, TurbineRPMCritical) {
+		return
+	}
+	MaybeCreateAlarm(collector, AlarmWarning, "Turbine", fmt.Sprintf("RPM Above %.2fc", TurbineRPMWarning), &t.SpeedRPM, TurbineRPMWarning)
 }
 
 // Simulate is the power output of the turbine.
