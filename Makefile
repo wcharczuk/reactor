@@ -1,5 +1,8 @@
 all: test
 
+init:
+	@go get ./...
+
 run:
 	@go run main.go
 

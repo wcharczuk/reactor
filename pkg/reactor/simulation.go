@@ -9,7 +9,8 @@ import (
 func NewSimulation() *Simulation {
 	return &Simulation{
 		Inputs:   make(chan Input, 64),
-		Messages: make(chan Message, 64),
+		Messages: make(chan Message, 1024),
+		Alarms:   make(chan Alarm, 1024),
 		Reactor:  NewReactor(),
 	}
 }
@@ -19,6 +20,7 @@ type Simulation struct {
 	TimeSinceStart time.Duration
 	Inputs         chan Input
 	Messages       chan Message
+	Alarms         chan Alarm
 	Command        string
 	Reactor        *Reactor
 }
@@ -52,6 +54,18 @@ func (s *Simulation) Simulate(quantum time.Duration) error {
 		}
 		if !i.Done() {
 			s.Inputs <- i
+		}
+	}
+
+	s.Reactor.CollectAlarms(s.Alarms)
+
+	alarms := len(s.Alarms)
+	var a Alarm
+	for x := 0; x < alarms; x++ {
+		a = <-s.Alarms
+		s.Message(a.String())
+		if !a.Done() {
+			s.Alarms <- a
 		}
 	}
 

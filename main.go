@@ -74,37 +74,6 @@ func HandleInputs(s *reactor.Simulation) func() error {
 	}
 }
 
-// HandleInput handles a ui event and catches panics.
-func HandleInput(s *reactor.Simulation, e ui.Event) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
-		}
-	}()
-
-	var processErr error
-	switch e.ID {
-	case "<C-c>":
-		return reactor.ErrQuiting
-	case "<Enter>":
-		if processErr = ProcessCommand(s); processErr != nil {
-			if processErr == reactor.ErrQuiting {
-				err = processErr
-				return
-			}
-			s.Message(processErr.Error())
-		}
-		s.Command = ""
-	case "<C-l>", "<Escape>":
-		s.Command = ""
-	case "C-8>", "<Backspace>": // handle backspace
-		s.Command = strings.TrimRightFunc(s.Command, FirstRune())
-	default:
-		s.Command = s.Command + EscapeInput(e.ID)
-	}
-	return
-}
-
 // RenderLoop renders controls and advances the simulation.
 func RenderLoop(s *reactor.Simulation) func() error {
 	totalWidth := 160
@@ -213,10 +182,11 @@ func RenderLoop(s *reactor.Simulation) func() error {
 		controls = append(controls, secondaryOutletTemp)
 
 		for {
-			if s.Reactor.Alarm {
+			if len(s.Alarms) > 0 {
 				alarm.TextStyle.Bg = ui.ColorRed
 			}
-			output.Text = FormatOutput(s.Reactor.Turbine.Output())
+
+			output.Text = reactor.FormatOutput(s.Reactor.Turbine.Output)
 			coreTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.CoreTemperature)
 			containmentTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.ContainmentTemperature)
 			turbineSpeed.Text = fmt.Sprintf("%.2frpm", s.Reactor.Turbine.SpeedRPM)
@@ -345,6 +315,37 @@ func ProcessCommand(s *reactor.Simulation) error {
 // utility functions
 //
 
+// HandleInput handles a ui event and catches panics.
+func HandleInput(s *reactor.Simulation, e ui.Event) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+
+	var processErr error
+	switch e.ID {
+	case "<C-c>":
+		return reactor.ErrQuiting
+	case "<Enter>":
+		if processErr = ProcessCommand(s); processErr != nil {
+			if processErr == reactor.ErrQuiting {
+				err = processErr
+				return
+			}
+			s.Message(processErr.Error())
+		}
+		s.Command = ""
+	case "<C-l>", "<Escape>":
+		s.Command = ""
+	case "C-8>", "<Backspace>": // handle backspace
+		s.Command = strings.TrimRightFunc(s.Command, FirstRune())
+	default:
+		s.Command = s.Command + EscapeInput(e.ID)
+	}
+	return
+}
+
 // ParseValue parses string as an int, and applies a given validator.
 func ParseValue(validator func(int) error, values ...string) (int, error) {
 	if len(values) == 0 {
@@ -444,17 +445,6 @@ func EscapeInput(value string) string {
 	default:
 		return value
 	}
-}
-
-// FormatOutput formats the output.
-func FormatOutput(output float64) string {
-	if output > 1000*1000 {
-		return fmt.Sprintf("%.2fgw/hr", output/(1000*1000))
-	}
-	if output > 1000 {
-		return fmt.Sprintf("%.2fmw/hr", output/1000)
-	}
-	return fmt.Sprintf("%.2fkw/hr", output)
 }
 
 //

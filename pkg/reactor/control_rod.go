@@ -1,10 +1,14 @@
 package reactor
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // NewControlRod returns a new control rod.
-func NewControlRod() *ControlRod {
+func NewControlRod(index int) *ControlRod {
 	return &ControlRod{
+		Index:       index,
 		Position:    PositionMax,
 		Temperature: BaseTemperature,
 	}
@@ -15,8 +19,20 @@ func NewControlRod() *ControlRod {
 // If a control rod is fully retracted, i.e. its position 0,
 // then the reaction is fully active.
 type ControlRod struct {
+	Index       int
 	Position    Position
 	Temperature float64
+}
+
+// CollectAlarms implements alarm provider.
+func (cr *ControlRod) CollectAlarms(collector chan Alarm) {
+	if MaybeCreateAlarm(collector, AlarmFatal, fmt.Sprintf("Control Rod %d Temp.", cr.Index), fmt.Sprintf("Above %.2fc", ControlRodTempFatal), &cr.Temperature, ControlRodTempFatal) {
+		return
+	}
+	if MaybeCreateAlarm(collector, AlarmCritical, fmt.Sprintf("Control Rod %d Temp.", cr.Index), fmt.Sprintf("Above %.2fc", ControlRodTempWarning), &cr.Temperature, ControlRodTempCritical) {
+		return
+	}
+	MaybeCreateAlarm(collector, AlarmWarning, fmt.Sprintf("Control Rod %d Temp.", cr.Index), fmt.Sprintf("Above %.2fc", ControlRodTempWarning), &cr.Temperature, ControlRodTempWarning)
 }
 
 // Simulate applies a simulation tick.

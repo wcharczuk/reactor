@@ -8,6 +8,11 @@ func PositionFromControl(control uint8) Position {
 // Position is a 0-255 value for a given control.
 type Position float64
 
+// IsZero returns if the position is zero.
+func (p Position) IsZero() bool {
+	return p == 0
+}
+
 // Control returns the uint8 (i.e. 0-255) value for a position.
 func (p Position) Control() uint8 {
 	return uint8(p * 255)
