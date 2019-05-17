@@ -1,5 +1,10 @@
 package reactor
 
+// PositionFromControl returns a position value from a control value.
+func PositionFromControl(control uint8) Position {
+	return Position(float64(control) / 255)
+}
+
 // Position is a 0-255 value for a given control.
 type Position float64
 

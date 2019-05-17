@@ -20,7 +20,7 @@ type Simulation struct {
 	Inputs         chan Input
 	Messages       chan Message
 	Command        string
-	Reactor        Reactor
+	Reactor        *Reactor
 }
 
 // Messagef logs a message with a given format and arguments.
