@@ -49,6 +49,9 @@ func RelativeQuantum(from, to, max float64, quantum time.Duration) time.Duration
 	}
 
 	delta := a - b
+	if delta == 0 {
+		return 0
+	}
 	pctChange := delta / max
 	return time.Duration(pctChange * float64(quantum))
 }

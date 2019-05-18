@@ -20,3 +20,11 @@ func TestLinearChange(t *testing.T) {
 	rate.Affect(&position, 2500*time.Millisecond)
 	assert.Equal(0.5, position)
 }
+
+func TestLinearChangeZeroDelta(t *testing.T) {
+	assert := assert.New(t)
+
+	var position Position = 0.5
+	rate := NewLinearChange(float64(position), 0.5, 5*time.Second)
+	assert.False(rate.IsAdditive())
+}

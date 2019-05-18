@@ -39,11 +39,18 @@ func (s *Simulation) Simulate(quantum time.Duration) error {
 		return err
 	}
 
+	// process the current inputs.
 	inputs := len(s.Inputs)
 	var err error
 	var i Input
 	for x := 0; x < inputs; x++ {
 		i = <-s.Inputs
+
+		// check if we entered a 127 => 127 like change ...
+		if i.Done() {
+			continue
+		}
+
 		if err = i.Simulate(quantum); err != nil {
 			return err
 		}

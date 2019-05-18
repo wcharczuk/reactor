@@ -79,6 +79,9 @@ func RenderLoop(s *reactor.Simulation) func() error {
 	controlRodTempWidth := 15
 	messageListWidth := 60
 
+	middleWidth := totalWidth - (gaugeWidth + controlRodTempWidth + messageListWidth)
+	middleWidth2 := middleWidth >> 1
+
 	return func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -125,27 +128,27 @@ func RenderLoop(s *reactor.Simulation) func() error {
 
 		output := widgets.NewParagraph()
 		output.Title = "Output"
-		output.SetRect(r(gaugeWidth+controlRodTempWidth, h(header), 15, 3))
+		output.SetRect(r(gaugeWidth+controlRodTempWidth, h(header), middleWidth, 3))
 		controls = append(controls, output)
 
 		turbineInletTemp := widgets.NewParagraph()
 		turbineInletTemp.Title = "Turb. Temp"
-		turbineInletTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output), 15, 3))
+		turbineInletTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output), middleWidth2, 3))
 		controls = append(controls, turbineInletTemp)
 
 		turbineSpeed := widgets.NewParagraph()
 		turbineSpeed.Title = "Turbine RPM"
-		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineInletTemp), h(header)+h(output), 15, 3))
+		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineInletTemp), h(header)+h(output), middleWidth2+1, 3))
 		controls = append(controls, turbineSpeed)
 
 		coreTemp := widgets.NewParagraph()
 		coreTemp.Title = "Core Temp"
-		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output)+h(turbineInletTemp), 15, 3))
+		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output)+h(turbineInletTemp), middleWidth2, 3))
 		controls = append(controls, coreTemp)
 
 		containmentTemp := widgets.NewParagraph()
 		containmentTemp.Title = "Cont. Temp"
-		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), h(header)+h(output)+h(turbineInletTemp), 15, 3))
+		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), h(header)+h(output)+h(turbineInletTemp), middleWidth2+1, 3))
 		controls = append(controls, containmentTemp)
 
 		primaryPump := widgets.NewGauge()
