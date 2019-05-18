@@ -4,3 +4,8 @@ REACTOR_TEMPERATURE:
   - "*_test.go"
   contains:
   - "Temperature"
+
+VENDORED_TERMUI:
+  description: "Please use a govendor compatible version of termui (i.e. github.com/wcharczuk/termui)"
+  importsContain:
+  - "github.com/gizak/termui"
