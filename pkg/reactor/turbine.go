@@ -11,9 +11,10 @@ var (
 )
 
 // NewTurbine returns a new turbine.
-func NewTurbine() *Turbine {
+func NewTurbine(cfg Config) *Turbine {
 	t := &Turbine{
-		InletTemp: BaseTemperature,
+		Config:    cfg,
+		InletTemp: cfg.BaseTempOrDefault(),
 	}
 	t.SpeedRPMAlarm = NewThresholdAlarm("Turbine", RPMThresholdMessageFormat, &t.SpeedRPM, TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning)
 	return t
@@ -21,6 +22,8 @@ func NewTurbine() *Turbine {
 
 // Turbine generates power based on fan rpm.
 type Turbine struct {
+	Config
+
 	SpeedRPM      float64
 	SpeedRPMAlarm ThresholdAlarm
 	Output        float64
@@ -36,10 +39,10 @@ func (t *Turbine) Alarms() []Alarm {
 
 // Simulate is the power output of the turbine.
 func (t *Turbine) Simulate(quantum time.Duration) error {
-	delta := t.InletTemp - BaseTemperature
+	delta := t.InletTemp - t.BaseTempOrDefault()
 	rate := (float64(quantum) / float64(time.Minute))
-	accel := rate * TurbineTempRPMRate * delta
-	deccel := rate * TurbineDrag * t.SpeedRPM
+	accel := rate * t.TurbineThermalRateMinuteOrDefault() * delta
+	deccel := rate * t.TurbineDragOrDefault() * t.SpeedRPM
 
 	t.SpeedRPM = t.SpeedRPM + accel
 	t.SpeedRPM = t.SpeedRPM - deccel
@@ -48,6 +51,6 @@ func (t *Turbine) Simulate(quantum time.Duration) error {
 		t.SpeedRPM = 0
 	}
 
-	t.Output = t.SpeedRPM * TurbineOutputRateMinute
+	t.Output = t.SpeedRPM * t.TurbineOutputRateMinuteOrDefault()
 	return nil
 }

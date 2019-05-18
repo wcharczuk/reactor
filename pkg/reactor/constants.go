@@ -22,16 +22,13 @@ const (
 
 // Alarm Thresholds
 const (
-	ContainmentTempWarning  = 200.0
-	ContainmentTempCritical = 400.0
-	ContainmentTempFatal    = 500.0
-)
-
-// Alarm Thresholds
-const (
 	CoreTempWarning  = 3000.0
 	CoreTempCritical = 5000.0
 	CoreTempFatal    = 6000.0
+
+	ContainmentTempWarning  = 200.0
+	ContainmentTempCritical = 400.0
+	ContainmentTempFatal    = 500.0
 
 	PumpInletWarning  = 1000.0
 	PumpInletCritical = 2000.0

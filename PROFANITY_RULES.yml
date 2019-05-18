@@ -1,0 +1,6 @@
+REACTOR_TEMPERATURE:
+  description: "please use Temp not Temperature"
+  excludeFiles:
+  - "*_test.go"
+  contains:
+  - "Temperature"

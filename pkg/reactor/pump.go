@@ -12,12 +12,13 @@ var (
 )
 
 // NewPump returns a new pump.
-func NewPump(name string) *Pump {
+func NewPump(cfg Config, name string) *Pump {
 	p := &Pump{
+		Config:     cfg,
 		Name:       name,
 		Throttle:   PositionMin,
-		InletTemp:  BaseTemperature,
-		OutletTemp: BaseTemperature,
+		InletTemp:  cfg.BaseTempOrDefault(),
+		OutletTemp: cfg.BaseTempOrDefault(),
 	}
 	p.InletTempAlarm = NewThresholdAlarm(fmt.Sprintf("%s Pump", name), TempThresholdMessageFormat, &p.InletTemp, PumpInletFatal, PumpInletCritical, PumpInletWarning)
 	p.OutletTempAlarm = NewThresholdAlarm(fmt.Sprintf("%s Pump", name), TempThresholdMessageFormat, &p.OutletTemp, PumpInletFatal, PumpInletCritical, PumpInletWarning)
@@ -27,6 +28,8 @@ func NewPump(name string) *Pump {
 
 // Pump moves coolant around.
 type Pump struct {
+	Config
+
 	Name                  string
 	Throttle              Position
 	ThrottlePositionAlarm PositionZeroAlarm
@@ -47,6 +50,6 @@ func (p *Pump) Alarms() []Alarm {
 
 // Simulate processes a simulation tick.
 func (p *Pump) Simulate(quantum time.Duration) error {
-	Transfer(&p.InletTemp, &p.OutletTemp, quantum, float64(p.Throttle)*PumpTransferRateMinute)
+	Transfer(&p.InletTemp, &p.OutletTemp, quantum, float64(p.Throttle)*p.PrimaryTransferRateMinuteOrDefault())
 	return nil
 }

@@ -21,7 +21,7 @@ type LinearChange struct {
 
 // String implements fmt.Stringer.
 func (lc LinearChange) String() string {
-	return fmt.Sprintf("%d/%v", int(lc.Delta*255), lc.Quantum)
+	return fmt.Sprintf("%d/%v", int(lc.Delta*255), RoundMillis(lc.Quantum))
 }
 
 // IsAdditive returns if the position rate is additive.

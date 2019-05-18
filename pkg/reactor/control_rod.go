@@ -6,11 +6,12 @@ import (
 )
 
 // NewControlRod returns a new control rod.
-func NewControlRod(index int) *ControlRod {
+func NewControlRod(cfg Config, index int) *ControlRod {
 	cr := &ControlRod{
+		Config:   cfg,
 		Index:    index,
 		Position: PositionMax,
-		Temp:     BaseTemperature,
+		Temp:     cfg.BaseTempOrDefault(),
 	}
 	cr.TempAlarm = NewThresholdAlarm(fmt.Sprintf("Control Rod %d", index), TempThresholdMessageFormat, &cr.Temp, ControlRodTempFatal, ControlRodTempCritical, ControlRodTempWarning)
 	return cr
@@ -21,6 +22,8 @@ func NewControlRod(index int) *ControlRod {
 // If a control rod is fully retracted, i.e. its position 0,
 // then the reaction is fully active.
 type ControlRod struct {
+	Config
+
 	Index     int
 	Position  Position
 	Temp      float64
@@ -34,7 +37,7 @@ func (cr *ControlRod) Alarms() []Alarm {
 
 // Simulate applies a simulation tick.
 func (cr *ControlRod) Simulate(quantum time.Duration) error {
-	rate := float64(PositionMax-cr.Position) * FissionRateMinute * (float64(quantum) / float64(time.Minute))
+	rate := float64(PositionMax-cr.Position) * cr.FissionRateMinuteOrDefault() * (float64(quantum) / float64(time.Minute))
 	cr.Temp = cr.Temp + rate
 	return nil
 }
