@@ -3,6 +3,7 @@ package reactor
 import (
 	"fmt"
 	"math"
+	"time"
 )
 
 // Percent returns the percent of the maximum of a given value.
@@ -21,18 +22,22 @@ func FormatOutput(output float64) string {
 	return fmt.Sprintf("%.2fkw/hr", output)
 }
 
-// MaybeCreateAlarm creates an alarm if a value is strictly greater than the threshold.
-func MaybeCreateAlarm(collector chan Alarm, severity, component, message string, value *float64, threshold float64) bool {
-	if *value > threshold {
-		collector <- Alarm{
-			Severity:  severity,
-			Component: component,
-			Message:   message,
-			DoneProvider: func() bool {
-				return *value <= threshold
-			},
-		}
-		return true
+// RelativeQuantum returns a normalized quantum based on a from and to position change.
+func RelativeQuantum(from, to, max float64, quantum time.Duration) time.Duration {
+	if from == to {
+		return 0
 	}
-	return false
+
+	var a, b float64
+	if from > to {
+		a = from
+		b = to
+	} else {
+		a = to
+		b = from
+	}
+
+	delta := a - b
+	pctChange := delta / max
+	return time.Duration(pctChange * float64(quantum))
 }

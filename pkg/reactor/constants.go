@@ -6,8 +6,8 @@ const (
 	// DefaultTickInterval is the default tick interval
 	DefaultTickInterval = 250 * time.Millisecond
 
-	// FissionRateMinute 32k Degrees a minute at full extension.
-	FissionRateMinute = 32768
+	// FissionRateMinute 8k Degrees a minute at full extension.
+	FissionRateMinute = 8192
 
 	// PositionMin is the maximum minimum value.
 	PositionMin Position = 0.0
@@ -15,7 +15,11 @@ const (
 	PositionMax Position = 1.0
 
 	// TurbineOutputRateMinute is the rpm => kw/hr ratio.
-	TurbineOutputRateMinute = 25
+	TurbineOutputRateMinute = 512
+	// TurbineTempRPMRate is the temp => rpm ratio.
+	TurbineTempRPMRate = 16
+	// TurbineDrag is the drag on the turbine shaft.
+	TurbineDrag = 0.33
 
 	// SinkTransferRateMinute is a constant.
 	SinkTransferRateMinute = 250
@@ -25,7 +29,13 @@ const (
 	PumpTransferRateMinute = 250
 
 	// BaseTemperature is the starting reactor core temperature.
-	BaseTemperature = 20
+	BaseTemperature = 20.0
+)
+
+// Threshold message formats.
+const (
+	TempThresholdMessageFormat = "Above %0.2f"
+	RPMThresholdMessageFormat  = "RPM Above %0.2f"
 )
 
 // Adjustment rates are how long it takes to fully adjust a control.
@@ -39,6 +49,13 @@ const (
 	ContainmentTempWarning  = 200.0
 	ContainmentTempCritical = 400.0
 	ContainmentTempFatal    = 500.0
+)
+
+// Alarm Severity
+const (
+	AlarmFatal    = "FATAL"
+	AlarmCritical = "CRITICAL"
+	AlarmWarning  = "WARN"
 )
 
 // Alarm Thresholds

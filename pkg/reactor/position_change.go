@@ -7,12 +7,14 @@ import (
 
 // NewPositionChange returns a new position change.
 func NewPositionChange(label string, position *Position, desired Position, quantum time.Duration) *PositionChange {
+	from := float64(*position)
+	to := float64(desired)
 	return &PositionChange{
 		Position: position,
 		Label:    label,
-		Desired:  desired,
 		Original: *position,
-		Rate:     NewLinearChange(float64(*position), float64(desired), quantum),
+		Desired:  desired,
+		Rate:     NewLinearChange(from, to, RelativeQuantum(from, to, 1.0, quantum)),
 		done:     make(chan struct{}),
 	}
 }

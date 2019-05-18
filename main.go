@@ -106,7 +106,7 @@ func RenderLoop(s *reactor.Simulation) func() error {
 		var controlRods []*widgets.Gauge
 		var controlRodTemps []*widgets.Paragraph
 		gaugeWidth := 50
-		controlRodTempWidth := 17
+		controlRodTempWidth := 15
 		gaugeTop := h(header)
 		for index := range s.Reactor.ControlRods {
 			gauge := widgets.NewGauge()
@@ -116,7 +116,7 @@ func RenderLoop(s *reactor.Simulation) func() error {
 			controlRods = append(controlRods, gauge)
 
 			gaugeTemp := widgets.NewParagraph()
-			gaugeTemp.Title = fmt.Sprintf("C. Rod %d Temp", index)
+			gaugeTemp.Title = fmt.Sprintf("CR %d Temp", index)
 			gaugeTemp.SetRect(r(gaugeWidth, gaugeTop, controlRodTempWidth, 3))
 			controls = append(controls, gaugeTemp)
 			controlRodTemps = append(controlRodTemps, gaugeTemp)
@@ -124,29 +124,29 @@ func RenderLoop(s *reactor.Simulation) func() error {
 			gaugeTop = gaugeTop + h(gauge)
 		}
 
-		alarm := widgets.NewParagraph()
-		alarm.Title = "Alarm"
-		alarm.SetRect(r(gaugeWidth+controlRodTempWidth, h(header), 9, 3))
-		controls = append(controls, alarm)
+		output := widgets.NewParagraph()
+		output.Title = "Output"
+		output.SetRect(r(gaugeWidth+controlRodTempWidth, h(header), 15, 3))
+		controls = append(controls, output)
+
+		turbineInletTemp := widgets.NewParagraph()
+		turbineInletTemp.Title = "Turb. Temp"
+		turbineInletTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output), 15, 3))
+		controls = append(controls, turbineInletTemp)
 
 		turbineSpeed := widgets.NewParagraph()
 		turbineSpeed.Title = "Turbine RPM"
-		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(alarm), 15, 3))
+		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineInletTemp), h(header)+h(output), 15, 3))
 		controls = append(controls, turbineSpeed)
-
-		output := widgets.NewParagraph()
-		output.Title = "Output"
-		output.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineSpeed), h(header)+h(alarm), 15, 3))
-		controls = append(controls, output)
 
 		coreTemp := widgets.NewParagraph()
 		coreTemp.Title = "Core Temp"
-		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(alarm)+h(output), 15, 3))
+		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output)+h(turbineInletTemp), 15, 3))
 		controls = append(controls, coreTemp)
 
 		containmentTemp := widgets.NewParagraph()
 		containmentTemp.Title = "Cont. Temp"
-		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), h(header)+h(alarm)+h(output), 15, 3))
+		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), h(header)+h(output)+h(turbineInletTemp), 15, 3))
 		controls = append(controls, containmentTemp)
 
 		primaryPump := widgets.NewGauge()
@@ -182,18 +182,31 @@ func RenderLoop(s *reactor.Simulation) func() error {
 		controls = append(controls, secondaryOutletTemp)
 
 		for {
-			if len(s.Alarms) > 0 {
-				alarm.TextStyle.Bg = ui.ColorRed
-			}
 
 			output.Text = reactor.FormatOutput(s.Reactor.Turbine.Output)
-			coreTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.CoreTemperature)
-			containmentTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.ContainmentTemperature)
+
+			coreTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.CoreTemp)
+			coreTemp.TextStyle.Bg, coreTemp.TextStyle.Fg = severity(s.Reactor.CoreTempAlarm.Severity())
+
+			containmentTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.ContainmentTemp)
+			containmentTemp.TextStyle.Bg, containmentTemp.TextStyle.Fg = severity(s.Reactor.ContainmentTempAlarm.Severity())
+
+			turbineInletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Turbine.InletTemp)
+
 			turbineSpeed.Text = fmt.Sprintf("%.2frpm", s.Reactor.Turbine.SpeedRPM)
-			primaryInletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Primary.InletTemperature)
-			primaryOutletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Primary.OutletTemperature)
-			secondaryInletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Secondary.InletTemperature)
-			secondaryOutletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Secondary.OutletTemperature)
+			turbineSpeed.TextStyle.Bg, turbineSpeed.TextStyle.Fg = severity(s.Reactor.Turbine.SpeedRPMAlarm.Severity())
+
+			primaryInletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Primary.InletTemp)
+			primaryInletTemp.TextStyle.Bg, primaryInletTemp.TextStyle.Fg = severity(s.Reactor.Primary.InletTempAlarm.Severity())
+
+			primaryOutletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Primary.OutletTemp)
+			primaryOutletTemp.TextStyle.Bg, primaryOutletTemp.TextStyle.Fg = severity(s.Reactor.Primary.OutletTempAlarm.Severity())
+
+			secondaryInletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Secondary.InletTemp)
+			secondaryInletTemp.TextStyle.Bg, secondaryInletTemp.TextStyle.Fg = severity(s.Reactor.Secondary.InletTempAlarm.Severity())
+
+			secondaryOutletTemp.Text = fmt.Sprintf("%.2fc", s.Reactor.Secondary.OutletTemp)
+			secondaryOutletTemp.TextStyle.Bg, secondaryOutletTemp.TextStyle.Fg = severity(s.Reactor.Secondary.OutletTempAlarm.Severity())
 
 			command.Text = "> " + s.Command
 			if messageCount := len(s.Messages); messageCount > 0 {
@@ -204,9 +217,14 @@ func RenderLoop(s *reactor.Simulation) func() error {
 				}
 			}
 
+			var gauge *widgets.Gauge
+			var label *widgets.Paragraph
 			for index, controlRod := range s.Reactor.ControlRods {
-				controlRods[index].Percent = int(controlRod.Position.Percent())
-				controlRodTemps[index].Text = fmt.Sprintf("%.2fc", controlRod.Temperature)
+				gauge = controlRods[index]
+				label = controlRodTemps[index]
+				gauge.Percent = int(controlRod.Position.Percent())
+				label.Text = fmt.Sprintf("%.2fc", controlRod.Temp)
+				label.TextStyle.Bg, label.TextStyle.Fg = severity(controlRod.TempAlarm.Severity())
 			}
 
 			primaryPump.Percent = int(s.Reactor.Primary.Throttle.Percent())
@@ -228,30 +246,49 @@ func ProcessCommand(s *reactor.Simulation) error {
 			return reactor.ErrQuiting
 		}
 	case "scram":
-		s.Message("initiated SCRAM of reactor")
-		s.Message("scram; extending all control rods")
-		for index, cr := range s.Reactor.ControlRods {
-			s.Inputs <- reactor.NewPositionChange(fmt.Sprintf("control rod %d", index), &cr.Position, reactor.PositionMax, 10*time.Second)
+		{
+			s.Message("initiated SCRAM of reactor")
+			s.Message("scram; extending all control rods")
+			for index, cr := range s.Reactor.ControlRods {
+				s.Inputs <- reactor.NewPositionChange(fmt.Sprintf("control rod %d", index), &cr.Position, reactor.PositionMax, reactor.ControlRodAdjustmentRate)
+			}
+			s.Message("scram; primary pump throttle to full")
+			s.Inputs <- reactor.NewPositionChange("primary pump throttle", &s.Reactor.Primary.Throttle, reactor.PositionMax, reactor.PumpThrottleAdjustmentRate)
+			s.Message("scram; secondary pump throttle to full")
+			s.Inputs <- reactor.NewPositionChange("secondary pump throttle", &s.Reactor.Secondary.Throttle, reactor.PositionMax, reactor.PumpThrottleAdjustmentRate)
 		}
-		s.Message("scram; primary pump throttle to full")
-		s.Inputs <- reactor.NewPositionChange("primary pump throttle", &s.Reactor.Primary.Throttle, reactor.PositionMax, 5*time.Second)
-		s.Message("scram; secondary pump throttle to full")
-		s.Inputs <- reactor.NewPositionChange("secondary pump throttle", &s.Reactor.Secondary.Throttle, reactor.PositionMax, 5*time.Second)
 	case "run":
-		s.Message("setting baseline config")
-		s.Message("baseline; retracting all control rods")
-		for index, cr := range s.Reactor.ControlRods {
-			s.Inputs <- reactor.NewPositionChange(fmt.Sprintf("control rod %d", index), &cr.Position, 0.25, 10*time.Second)
+		{
+			s.Message("setting baseline config")
+			s.Message("baseline; retracting all control rods")
+			for index, cr := range s.Reactor.ControlRods {
+				s.Inputs <- reactor.NewPositionChange(fmt.Sprintf("control rod %d", index), &cr.Position, 0.16, reactor.ControlRodAdjustmentRate)
+			}
+			s.Message("baseline; primary pump throttle to full")
+			s.Inputs <- reactor.NewPositionChange("primary pump throttle", &s.Reactor.Primary.Throttle, reactor.PositionMax, reactor.PumpThrottleAdjustmentRate)
+			s.Message("baseline; secondary pump throttle to full")
+			s.Inputs <- reactor.NewPositionChange("secondary pump throttle", &s.Reactor.Secondary.Throttle, reactor.PositionMax, reactor.PumpThrottleAdjustmentRate)
 		}
-		s.Message("baseline; primary pump throttle to full")
-		s.Inputs <- reactor.NewPositionChange("primary pump throttle", &s.Reactor.Primary.Throttle, reactor.PositionMax, 5*time.Second)
-		s.Message("baseline; secondary pump throttle to full")
-		s.Inputs <- reactor.NewPositionChange("secondary pump throttle", &s.Reactor.Secondary.Throttle, reactor.PositionMax, 5*time.Second)
 	case "cr":
 		{
 			if len(args) < 2 {
 				return errors.New("invalid `cr` args; must provide index and amount (0-255)")
 			}
+			if args[0] == "*" {
+				parsedValue, err := ParseValue(ValidUint8, args[1])
+				if err != nil {
+					return err
+				}
+				for index, cr := range s.Reactor.ControlRods {
+					label := fmt.Sprintf("control rod %d", index)
+					desired := reactor.PositionFromControl(uint8(parsedValue))
+					input := reactor.NewPositionChange(label, &cr.Position, desired, reactor.ControlRodAdjustmentRate)
+					s.Inputs <- input
+					s.Message(input)
+				}
+				return nil
+			}
+
 			parsedValues, err := ParseValues(ValidUint8, args...)
 			if err != nil {
 				return err
@@ -264,7 +301,7 @@ func ProcessCommand(s *reactor.Simulation) error {
 			current := &s.Reactor.ControlRods[parsedValues[0]].Position
 			desired := reactor.PositionFromControl(uint8(parsedValues[1]))
 
-			input := reactor.NewPositionChange(label, current, desired, 10*time.Second)
+			input := reactor.NewPositionChange(label, current, desired, reactor.ControlRodAdjustmentRate)
 			s.Message(input)
 			s.Inputs <- input
 		}
@@ -280,7 +317,7 @@ func ProcessCommand(s *reactor.Simulation) error {
 			label := "primary pump throttle"
 			current := &s.Reactor.Primary.Throttle
 			desired := reactor.PositionFromControl(uint8(parsed))
-			input := reactor.NewPositionChange(label, current, desired, 5*time.Second)
+			input := reactor.NewPositionChange(label, current, desired, reactor.PumpThrottleAdjustmentRate)
 
 			s.Message(input)
 			s.Inputs <- input
@@ -298,7 +335,7 @@ func ProcessCommand(s *reactor.Simulation) error {
 			current := &s.Reactor.Secondary.Throttle
 			desired := reactor.PositionFromControl(uint8(parsed))
 
-			input := reactor.NewPositionChange(label, current, desired, 5*time.Second)
+			input := reactor.NewPositionChange(label, current, desired, reactor.PumpThrottleAdjustmentRate)
 			s.Message(input)
 			s.Inputs <- input
 		}
@@ -469,4 +506,31 @@ func w(c rectProvider) int {
 
 func h(c rectProvider) int {
 	return c.GetRect().Dy()
+}
+
+func severity(severity string) (background, foreground ui.Color) {
+	switch severity {
+	case reactor.AlarmFatal:
+		{
+			background = ui.ColorRed
+			foreground = ui.ColorWhite
+			return
+		}
+	case reactor.AlarmCritical:
+		{
+			background = ui.ColorYellow
+			foreground = ui.ColorWhite
+			return
+		}
+	case reactor.AlarmWarning:
+		{
+			background = ui.ColorYellow
+			foreground = ui.ColorWhite
+			return
+		}
+	default:
+		background = ui.ColorClear
+		foreground = ui.ColorWhite
+		return
+	}
 }

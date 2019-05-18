@@ -56,19 +56,6 @@ func (s *Simulation) Simulate(quantum time.Duration) error {
 			s.Inputs <- i
 		}
 	}
-
-	s.Reactor.CollectAlarms(s.Alarms)
-
-	alarms := len(s.Alarms)
-	var a Alarm
-	for x := 0; x < alarms; x++ {
-		a = <-s.Alarms
-		s.Message(a.String())
-		if !a.Done() {
-			s.Alarms <- a
-		}
-	}
-
 	s.TimeSinceStart = s.TimeSinceStart + quantum
 	return nil
 }
