@@ -1,35 +1,17 @@
 package reactor
 
-import "time"
+// Alarm Severity
+const (
+	AlarmFatal    = "FATAL"
+	AlarmCritical = "CRITICAL"
+	AlarmWarning  = "WARN"
+)
 
 const (
-	// DefaultTickInterval is the default tick interval
-	DefaultTickInterval = 250 * time.Millisecond
-
-	// FissionRateMinute 8k Degrees a minute at full extension.
-	FissionRateMinute = 8192
-
 	// PositionMin is the maximum minimum value.
 	PositionMin Position = 0.0
 	// PositionMax is the maximum position value.
 	PositionMax Position = 1.0
-
-	// TurbineOutputRateMinute is the rpm => kw/hr ratio.
-	TurbineOutputRateMinute = 512
-	// TurbineTempRPMRate is the temp => rpm ratio.
-	TurbineTempRPMRate = 16
-	// TurbineDrag is the drag on the turbine shaft.
-	TurbineDrag = 0.33
-
-	// SinkTransferRateMinute is a constant.
-	SinkTransferRateMinute = 250
-	// ContainmentTransferRateMinute is a constant.
-	ContainmentTransferRateMinute = 0.1
-	// PumpTransferRateMinute is a constant.
-	PumpTransferRateMinute = 250
-
-	// BaseTemperature is the starting reactor core temperature.
-	BaseTemperature = 20.0
 )
 
 // Threshold message formats.
@@ -38,24 +20,11 @@ const (
 	RPMThresholdMessageFormat  = "RPM Above %0.2f"
 )
 
-// Adjustment rates are how long it takes to fully adjust a control.
-const (
-	ControlRodAdjustmentRate   = 10 * time.Second
-	PumpThrottleAdjustmentRate = 5 * time.Second
-)
-
 // Alarm Thresholds
 const (
 	ContainmentTempWarning  = 200.0
 	ContainmentTempCritical = 400.0
 	ContainmentTempFatal    = 500.0
-)
-
-// Alarm Severity
-const (
-	AlarmFatal    = "FATAL"
-	AlarmCritical = "CRITICAL"
-	AlarmWarning  = "WARN"
 )
 
 // Alarm Thresholds

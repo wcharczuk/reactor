@@ -274,6 +274,8 @@ func ProcessCommand(s *reactor.Simulation) error {
 			if len(args) < 2 {
 				return errors.New("invalid `cr` args; must provide index and amount (0-255)")
 			}
+
+			// handle if we're doing all rods
 			if args[0] == "*" {
 				parsedValue, err := ParseValue(ValidUint8, args[1])
 				if err != nil {
