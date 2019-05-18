@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	"os"
@@ -8,13 +9,20 @@ import (
 	"time"
 
 	"github.com/blend/go-sdk/async"
+	"github.com/blend/go-sdk/configutil"
 	"github.com/blend/go-sdk/logger"
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 	"github.com/wcharczuk/reactor/pkg/reactor"
 )
 
+var (
+	flagConfigPath = flag.String("config", "config.yml", "The simulation config file path (optional)")
+)
+
 func main() {
+	flag.Parse()
+
 	err := ui.Init()
 	if err != nil {
 		logger.FatalExit(err)
@@ -25,6 +33,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 		}
 	}()
+
+	cfg := reactor.DefaultConfig
+	if _, err := configutil.Read(&cfg, configutil.OptAddPreferredPaths(*flagConfigPath)); !configutil.IsIgnored(err) {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return
+	}
 
 	s := reactor.NewSimulation(reactor.DefaultConfig)
 
