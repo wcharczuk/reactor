@@ -91,6 +91,14 @@
 			"path": "github.com/blend/go-sdk/yaml",
 			"revision": "7c07f361172b7bdff70c465c61ae07f5ce7c3781",
 			"revisionTime": "2019-05-16T23:15:38Z"
+		},
+		{
+			"path": "github.com/gizak/termui/v3",
+			"revision": ""
+		},
+		{
+			"path": "github.com/gizak/termui/v3/widgets",
+			"revision": ""
 		}
 	],
 	"rootPath": "github.com/wcharczuk/reactor"
