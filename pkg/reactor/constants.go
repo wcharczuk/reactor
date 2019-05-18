@@ -22,9 +22,9 @@ const (
 
 // Alarm Thresholds
 const (
-	CoreTempWarning  = 3000.0
-	CoreTempCritical = 5000.0
-	CoreTempFatal    = 6000.0
+	CoreTempWarning  = 1000.0
+	CoreTempCritical = 2000.0
+	CoreTempFatal    = 3000.0
 
 	ContainmentTempWarning  = 200.0
 	ContainmentTempCritical = 400.0
@@ -42,7 +42,7 @@ const (
 	TurbineRPMCritical = 6000.0
 	TurbineRPMFatal    = 8000.0
 
-	ControlRodTempWarning  = 4000.0
-	ControlRodTempCritical = 6000.0
-	ControlRodTempFatal    = 7000.0
+	ControlRodTempWarning  = 2000.0
+	ControlRodTempCritical = 3000.0
+	ControlRodTempFatal    = 4000.0
 )

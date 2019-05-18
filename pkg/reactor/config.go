@@ -6,16 +6,25 @@ import "time"
 var DefaultConfig = Config{
 	Scripts: map[string][]string{
 		"scram": []string{
+			"alert reactor set to scram",
 			"cr * 255",
 			"pp 255",
 			"sp 255",
 		},
 		"base": []string{
+			"alert reactor set to baseline config",
 			"cr * 135",
 			"pp 255",
 			"sp 255",
 		},
+		"full": []string{
+			"alert reactor set to maximum output config",
+			"cr * 0",
+			"pp 255",
+			"sp 255",
+		},
 		"fail": []string{
+			"alert reactor set to failure config",
 			"cr * 0",
 			"pp 0",
 			"sp 0",
@@ -65,8 +74,8 @@ type Config struct {
 const (
 	// DefaultTickInterval is the default tick interval
 	DefaultTickInterval = 250 * time.Millisecond
-	// DefaultFissionRateMinute 8k Degrees a minute at full extension.
-	DefaultFissionRateMinute = 8192
+	// DefaultFissionRateMinute 16k Degrees a minute at full extension.
+	DefaultFissionRateMinute = 16384
 	// DefaultTurbineOutputRateMinute is the rpm => kw/hr ratio.
 	DefaultTurbineOutputRateMinute = 512
 	// DefaultTurbineThermalRateMinute is the temp => rpm ratio.
