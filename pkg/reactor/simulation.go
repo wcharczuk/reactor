@@ -77,10 +77,18 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			s.Alert = strings.Join(args, " ")
 			return nil
 		}
+	case "help", "?":
+		{
+			s.Info("help: help | ? : this message")
+			s.Info("help: cr ([0-9],*) [0-255] : set cr pos (* for all)")
+			s.Info("help: pp [0-255] : primary pump throttle")
+			s.Info("help: sp [0-255] : secondary pump throttle")
+			s.Info("help: scripts : display a list of scripts")
+			s.Info("help: <script name> : invoke a script")
+		}
 	case "scripts":
-		s.Message("listing scripts")
 		for name, script := range s.Scripts {
-			s.Messagef("script: %s (%d commands)", name, len(script))
+			s.Infof("script: %s (%d commands)", name, len(script))
 		}
 		return nil
 	case "cr":
@@ -177,6 +185,18 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 //
 // Log message helpers
 //
+
+// Infof writes a message to the log without a timestamp based on a format.
+func (s *Simulation) Infof(format string, args ...interface{}) {
+	s.Info(fmt.Sprintf(format, args...))
+}
+
+// Info writes a message to the log without a timestamp.
+func (s *Simulation) Info(args ...interface{}) {
+	s.Log <- LogMessage{
+		Text: fmt.Sprint(args...),
+	}
+}
 
 // Messagef logs a message with a given format and arguments.
 func (s *Simulation) Messagef(format string, args ...interface{}) {

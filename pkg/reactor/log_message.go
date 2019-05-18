@@ -2,6 +2,7 @@ package reactor
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -18,8 +19,13 @@ type LogMessage struct {
 }
 
 func (lm LogMessage) String() string {
-	if lm.Fields != nil {
-		return fmt.Sprintf("%-7s %s %#v", lm.Timestamp.Format(MessageTimeFormat), lm.Text, FormatFields(lm.Fields))
+	var parts []string
+	if !lm.Timestamp.IsZero() {
+		parts = append(parts, fmt.Sprintf("%-7s", lm.Timestamp.Format(MessageTimeFormat)))
 	}
-	return fmt.Sprintf("%-7s %s", lm.Timestamp.Format(MessageTimeFormat), lm.Text)
+	parts = append(parts, lm.Text)
+	if lm.Fields != nil {
+		parts = append(parts, FormatFields(lm.Fields))
+	}
+	return strings.Join(parts, " ")
 }
