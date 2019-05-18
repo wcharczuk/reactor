@@ -11,9 +11,12 @@ import (
 	"github.com/blend/go-sdk/async"
 	"github.com/blend/go-sdk/configutil"
 	"github.com/blend/go-sdk/logger"
-	ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
+
 	"github.com/wcharczuk/reactor/pkg/reactor"
+
+	// these imports suck. help.
+	ui "github.com/wcharczuk/termui"
+	"github.com/wcharczuk/termui/widgets"
 )
 
 var (
