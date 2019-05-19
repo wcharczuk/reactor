@@ -22,9 +22,6 @@ func NewSimulation(cfg Config) *Simulation {
 type Simulation struct {
 	Config
 
-	// Command is the current command input.
-	Command string
-
 	TimeSinceStart time.Duration
 	Reactor        *Reactor
 
@@ -75,12 +72,10 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 	case "alert":
 		{
 			s.Notices <- NewNotice(SeverityFatal, "Alert", strings.Join(args, " "))
-			return nil
 		}
 	case "notice":
 		{
 			s.Notices <- NewNotice(SeverityInfo, "Notice", strings.Join(args, " "))
-			return nil
 		}
 	case "help", "?":
 		{
@@ -96,10 +91,11 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			s.Notices <- NewNotice(SeverityInfo, "Help", lines...)
 		}
 	case "scripts":
+		var lines []string
 		for name, script := range s.Scripts {
-			s.Infof("script: %s (%d commands)", name, len(script))
+			lines = append(lines, fmt.Sprintf("%s (%d commands)", name, len(script)))
 		}
-		return nil
+		s.Notices <- NewNotice(SeverityInfo, "Scripts", lines...)
 	case "cr":
 		{
 			if len(args) < 2 {
@@ -184,7 +180,7 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 				}
 				return nil
 			}
-			s.Messagef("invalid command: %s", s.Command)
+			s.Messagef("invalid command: %s", rawCommand)
 		}
 	}
 
