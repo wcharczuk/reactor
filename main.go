@@ -14,7 +14,7 @@ import (
 
 	"github.com/wcharczuk/reactor/pkg/reactor"
 
-	// these imports suck. help.
+	// using .
 	ui "github.com/wcharczuk/termui"
 	"github.com/wcharczuk/termui/widgets"
 )
@@ -88,10 +88,60 @@ func HandleInputs(s *reactor.Simulation) func() error {
 	}
 }
 
+// HandleInput handles a ui event and catches panics.
+func HandleInput(s *reactor.Simulation, e ui.Event) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+
+	// if we're showing an alert ...
+	if len(s.Notices) > 0 {
+		switch e.ID {
+		case "<C-c>":
+			err = reactor.ErrQuiting
+			return
+		case "<Enter>", "<Escape>":
+			s.Notices = nil
+			return
+		default:
+			s.Notices = nil
+			return
+		}
+	}
+
+	// process command as normal ...
+	switch e.ID {
+	case "<C-c>":
+		err = reactor.ErrQuiting
+		return
+	case "<Enter>":
+		if len(s.Command) == 0 {
+			return nil
+		}
+
+		if processErr := s.ProcessCommand(s.Command); processErr != nil {
+			if processErr == reactor.ErrQuiting {
+				err = processErr
+				return
+			}
+			s.Message(processErr.Error())
+		}
+		s.Command = ""
+	case "<C-l>", "<Escape>":
+		s.Command = ""
+	case "C-8>", "<Backspace>": // handle backspace
+		s.Command = strings.TrimRightFunc(s.Command, firstRune())
+	default:
+		s.Command = s.Command + escapeInput(e.ID)
+	}
+	return
+}
+
 // RenderLoop renders controls and advances the simulation.
 func RenderLoop(s *reactor.Simulation) func() error {
 	totalWidth := 160
-	alertWidth := 100
 	gaugeWidth := 50
 	controlRodTempWidth := 15
 	messageListWidth := 60
@@ -203,18 +253,18 @@ func RenderLoop(s *reactor.Simulation) func() error {
 		var activeControls []ui.Drawable
 		for {
 			activeControls = controls[:]
-			if len(s.Alert) > 0 {
-				alert := widgets.NewParagraph()
+			noticeTop := 3
+			for _, notice := range s.Notices {
+				left := (totalWidth / 2.0) - (notice.Dx() / 2.0)
 
-				alert.Title = "Alert"
-				alert.Text = s.Alert
-				alert.BorderStyle.Fg = ui.ColorRed
+				noticeBox := widgets.NewParagraph()
+				noticeBox.Title = notice.Heading + " (press <Enter> to dismiss)"
+				noticeBox.Text = notice.Message()
+				noticeBox.BorderStyle.Fg, _ = severity(notice.Severity)
+				noticeBox.SetRect(r(left, noticeTop, notice.Dx(), notice.Dy()))
 
-				left := (totalWidth / 2.0) - (alertWidth / 2.0)
-				top := 3
-
-				alert.SetRect(r(left, top, alertWidth, 3))
-				activeControls = append(activeControls, alert)
+				activeControls = append(activeControls, noticeBox)
+				noticeTop = noticeTop + h(noticeBox)
 			}
 
 			output.Text = reactor.FormatOutput(s.Reactor.Turbine.Output)
@@ -274,53 +324,6 @@ func RenderLoop(s *reactor.Simulation) func() error {
 //
 // utility functions
 //
-
-// HandleInput handles a ui event and catches panics.
-func HandleInput(s *reactor.Simulation, e ui.Event) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
-		}
-	}()
-
-	// if we're showing an alert ...
-	if len(s.Alert) > 0 {
-		switch e.ID {
-		case "<C-c>":
-			err = reactor.ErrQuiting
-			return
-		case "<Enter>", "<Escape>":
-			s.Alert = ""
-			ui.Clear()
-			return
-		default:
-			return
-		}
-	}
-
-	// process command as normal ...
-	switch e.ID {
-	case "<C-c>":
-		err = reactor.ErrQuiting
-		return
-	case "<Enter>":
-		if processErr := s.ProcessCommand(s.Command); processErr != nil {
-			if processErr == reactor.ErrQuiting {
-				err = processErr
-				return
-			}
-			s.Message(processErr.Error())
-		}
-		s.Command = ""
-	case "<C-l>", "<Escape>":
-		s.Command = ""
-	case "C-8>", "<Backspace>": // handle backspace
-		s.Command = strings.TrimRightFunc(s.Command, firstRune())
-	default:
-		s.Command = s.Command + escapeInput(e.ID)
-	}
-	return
-}
 
 //
 // input helpers
@@ -385,19 +388,19 @@ func h(c rectProvider) int {
 
 func severity(severity string) (background, foreground ui.Color) {
 	switch severity {
-	case reactor.AlarmFatal:
+	case reactor.SeverityFatal:
 		{
 			background = ui.ColorRed
 			foreground = ui.ColorWhite
 			return
 		}
-	case reactor.AlarmCritical:
+	case reactor.SeverityCritical:
 		{
 			background = ui.ColorYellow
 			foreground = ui.ColorWhite
 			return
 		}
-	case reactor.AlarmWarning:
+	case reactor.SeverityWarning:
 		{
 			background = ui.ColorYellow
 			foreground = ui.ColorWhite

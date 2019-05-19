@@ -2,9 +2,10 @@ package reactor
 
 // Alarm Severity
 const (
-	AlarmFatal    = "FATAL"
-	AlarmCritical = "CRITICAL"
-	AlarmWarning  = "WARN"
+	SeverityFatal    = "FATAL"
+	SeverityCritical = "CRITICAL"
+	SeverityWarning  = "WARN"
+	SeverityInfo     = "INFO"
 )
 
 const (

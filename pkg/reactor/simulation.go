@@ -23,8 +23,7 @@ type Simulation struct {
 
 	// Command is the current command input.
 	Command string
-	// Alert is a notice, that can be dismissed.
-	Alert string
+	Notices []Notice
 
 	TimeSinceStart time.Duration
 	Reactor        *Reactor
@@ -74,17 +73,26 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 		}
 	case "alert":
 		{
-			s.Alert = strings.Join(args, " ")
+			s.Notices = append(s.Notices, NewNotice(SeverityFatal, "Alert", strings.Join(args, " ")))
+			return nil
+		}
+	case "notice":
+		{
+			s.Notices = append(s.Notices, NewNotice(SeverityInfo, "Notice", strings.Join(args, " ")))
 			return nil
 		}
 	case "help", "?":
 		{
-			s.Info("help: help | ? : this message")
-			s.Info("help: cr ([0-9],*) [0-255] : set cr pos (* for all)")
-			s.Info("help: pp [0-255] : primary pump throttle")
-			s.Info("help: sp [0-255] : secondary pump throttle")
-			s.Info("help: scripts : display a list of scripts")
-			s.Info("help: <script name> : invoke a script")
+			lines := []string{
+				"command list:",
+				"> help | ? : this message",
+				"> cr ([0-9],*) [0-255] : set control rod position (by index, or * for all)",
+				"> pp [0-255] : primary pump throttle",
+				"> sp [0-255] : secondary pump throttle",
+				"> scripts : display a list of scripts",
+				"> <script name> : invoke a script",
+			}
+			s.Notices = append(s.Notices, NewNotice(SeverityInfo, "Help", lines...))
 		}
 	case "scripts":
 		for name, script := range s.Scripts {

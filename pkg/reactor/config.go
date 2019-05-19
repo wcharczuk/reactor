@@ -6,25 +6,25 @@ import "time"
 var DefaultConfig = Config{
 	Scripts: map[string][]string{
 		"scram": []string{
-			"alert reactor set to scram",
+			"notice 3 reactor set to scram",
 			"cr * 255",
 			"pp 255",
 			"sp 255",
 		},
 		"base": []string{
-			"alert reactor set to baseline config",
+			"notice 3 reactor set to baseline config",
 			"cr * 135",
 			"pp 255",
 			"sp 255",
 		},
 		"full": []string{
-			"alert reactor set to maximum output config",
+			"notice 3 reactor set to maximum output config",
 			"cr * 0",
 			"pp 255",
 			"sp 255",
 		},
 		"fail": []string{
-			"alert reactor set to failure config",
+			"notice 3 reactor set to failure config",
 			"cr * 0",
 			"pp 0",
 			"sp 0",

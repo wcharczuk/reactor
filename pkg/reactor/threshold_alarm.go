@@ -46,13 +46,13 @@ func (ta ThresholdAlarm) Threshold() float64 {
 // Severity returns the alarm severity.
 func (ta ThresholdAlarm) Severity() string {
 	if *ta.Value > ta.FatalThreshold {
-		return AlarmFatal
+		return SeverityFatal
 	}
 	if *ta.Value > ta.CriticalThreshold {
-		return AlarmCritical
+		return SeverityCritical
 	}
 	if *ta.Value > ta.WarningThreshold {
-		return AlarmWarning
+		return SeverityWarning
 	}
 	return ""
 }

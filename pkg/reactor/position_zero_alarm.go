@@ -21,7 +21,7 @@ type PositionZeroAlarm struct {
 // Severity returns the alarm severity.
 func (pza PositionZeroAlarm) Severity() string {
 	if pza.Active() {
-		return AlarmWarning
+		return SeverityWarning
 	}
 	return ""
 }
