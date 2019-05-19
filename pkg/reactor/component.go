@@ -7,7 +7,6 @@ import (
 // Component is the base component type.
 type Component struct {
 	Config
-
 	Failed             bool
 	FailureProbability float64
 }

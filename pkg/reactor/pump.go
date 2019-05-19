@@ -51,13 +51,6 @@ func (p *Pump) Alarms() []Alarm {
 func (p *Pump) Simulate(quantum time.Duration) error {
 	Transfer(&p.InletTemp, &p.OutletTemp, quantum, float64(p.Throttle)*p.PrimaryTransferRateMinuteOrDefault())
 
-	if err := p.InletTempAlarm.Simulate(quantum); err != nil {
-		return err
-	}
-	if err := p.OutletTempAlarm.Simulate(quantum); err != nil {
-		return err
-	}
-
 	p.Component.FailureProbability = (FailureProbability(p.InletTempAlarm.Severity()) + FailureProbability(p.OutletTempAlarm.Severity()))
 	if err := p.Component.Simulate(quantum); err != nil {
 		return err

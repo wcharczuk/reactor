@@ -50,10 +50,6 @@ func (cr *ControlRod) Simulate(quantum time.Duration) error {
 	rate := float64(PositionMax-cr.Position) * cr.FissionRateMinuteOrDefault() * (float64(quantum) / float64(time.Minute))
 	cr.Temp = cr.Temp + rate
 
-	if err := cr.TempAlarm.Simulate(quantum); err != nil {
-		return err
-	}
-
 	cr.Component.FailureProbability = FailureProbability(cr.TempAlarm.Severity())
 	if err := cr.Component.Simulate(quantum); err != nil {
 		return err

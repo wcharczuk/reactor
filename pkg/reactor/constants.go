@@ -6,6 +6,7 @@ const (
 	SeverityCritical = "CRITICAL"
 	SeverityWarning  = "WARN"
 	SeverityInfo     = "INFO"
+	SeverityNone     = ""
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 
 // Threshold message formats.
 const (
-	TempThresholdMessageFormat = "Above %0.2f"
+	TempThresholdMessageFormat = "Temperature Above %0.2f"
 	RPMThresholdMessageFormat  = "RPM Above %0.2f"
 )
 
