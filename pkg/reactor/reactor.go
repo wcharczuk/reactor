@@ -80,8 +80,15 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 		Transfer(&cr.Temp, &r.CoreTemp, quantum, r.ConductionRateMinuteOrDefault()/float64(len(r.ControlRods)))
 	}
 	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
+
 	Transfer(&r.CoreTemp, &r.ContainmentTemp, quantum, r.RadiantRateMinuteOrDefault())
-	Transfer(&r.ContainmentTemp, r.baseTemp(), quantum, r.RadiantRateMinuteOrDefault()/2.0)
+	Transfer(&r.ContainmentTemp, r.baseTemp(), quantum, r.RadiantRateMinuteOrDefault())
+
+	Transfer(&r.CoreTemp, &r.Turbine.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
+	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
+	Transfer(&r.CoreTemp, &r.Primary.OutletTemp, quantum, r.RadiantRateMinuteOrDefault())
+	Transfer(&r.CoreTemp, &r.Secondary.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
+	Transfer(&r.CoreTemp, &r.Secondary.OutletTemp, quantum, r.RadiantRateMinuteOrDefault())
 
 	if err := r.Primary.Simulate(quantum); err != nil {
 		return err

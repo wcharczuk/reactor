@@ -141,9 +141,11 @@ func (rc *RenderContext) HandleInput(e ui.Event) (err error) {
 			return
 		case "<Enter>", "<Escape>":
 			rc.Notices = nil
+			ui.Clear()
 			return
 		default:
 			rc.Notices = nil
+			ui.Clear()
 			return
 		}
 	}
