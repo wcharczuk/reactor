@@ -13,9 +13,9 @@ func NewNotice(severity, heading string, messageLines ...string) Notice {
 			width = len(line)
 		}
 	}
-	height := len(messageLines)
+
 	return Notice{
-		Rectangle: image.Rect(0, 0, width, height),
+		Rectangle: image.Rect(0, 0, width, len(messageLines)),
 		Severity:  severity,
 		Heading:   heading,
 		Lines:     messageLines,

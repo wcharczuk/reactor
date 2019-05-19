@@ -103,10 +103,8 @@ func HandleInput(s *reactor.Simulation, e ui.Event) (err error) {
 			err = reactor.ErrQuiting
 			return
 		case "<Enter>", "<Escape>":
-			s.Notices = nil
 			return
 		default:
-			s.Notices = nil
 			return
 		}
 	}
@@ -254,14 +252,21 @@ func RenderLoop(s *reactor.Simulation) func() error {
 		for {
 			activeControls = controls[:]
 			noticeTop := 3
-			for _, notice := range s.Notices {
-				left := (totalWidth / 2.0) - (notice.Dx() / 2.0)
+			noticeCount := len(s.Notices)
+			for x := 0; x < noticeCount; x++ {
+				notice := <-s.Notices
 
 				noticeBox := widgets.NewParagraph()
 				noticeBox.Title = notice.Heading + " (press <Enter> to dismiss)"
 				noticeBox.Text = notice.Message()
 				noticeBox.BorderStyle.Fg, _ = severity(notice.Severity)
-				noticeBox.SetRect(r(left, noticeTop, notice.Dx(), notice.Dy()))
+
+				width := notice.Dx()
+				if len(noticeBox.Title) > width {
+					width = len(noticeBox.Title)
+				}
+				left := (totalWidth / 2.0) - (width / 2.0)
+				noticeBox.SetRect(r(left, noticeTop, width+5, notice.Dy()+2))
 
 				activeControls = append(activeControls, noticeBox)
 				noticeTop = noticeTop + h(noticeBox)

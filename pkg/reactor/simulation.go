@@ -13,6 +13,7 @@ func NewSimulation(cfg Config) *Simulation {
 		Config:  cfg,
 		Inputs:  make(chan Input, 64),
 		Log:     make(chan LogMessage, 1024),
+		Notices: make(chan Notice, 32),
 		Reactor: NewReactor(cfg),
 	}
 }
@@ -23,13 +24,13 @@ type Simulation struct {
 
 	// Command is the current command input.
 	Command string
-	Notices []Notice
 
 	TimeSinceStart time.Duration
 	Reactor        *Reactor
 
-	Inputs chan Input
-	Log    chan LogMessage
+	Notices chan Notice
+	Inputs  chan Input
+	Log     chan LogMessage
 }
 
 // Simulate implements simulatable.
@@ -73,12 +74,12 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 		}
 	case "alert":
 		{
-			s.Notices = append(s.Notices, NewNotice(SeverityFatal, "Alert", strings.Join(args, " ")))
+			s.Notices <- NewNotice(SeverityFatal, "Alert", strings.Join(args, " "))
 			return nil
 		}
 	case "notice":
 		{
-			s.Notices = append(s.Notices, NewNotice(SeverityInfo, "Notice", strings.Join(args, " ")))
+			s.Notices <- NewNotice(SeverityInfo, "Notice", strings.Join(args, " "))
 			return nil
 		}
 	case "help", "?":
@@ -92,7 +93,7 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 				"> scripts : display a list of scripts",
 				"> <script name> : invoke a script",
 			}
-			s.Notices = append(s.Notices, NewNotice(SeverityInfo, "Help", lines...))
+			s.Notices <- NewNotice(SeverityInfo, "Help", lines...)
 		}
 	case "scripts":
 		for name, script := range s.Scripts {
@@ -188,6 +189,14 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 	}
 
 	return nil
+}
+
+// ClearNotices clears the notice list.
+func (s *Simulation) ClearNotices() {
+	noticeCount := len(s.Notices)
+	for x := 0; x < noticeCount; x++ {
+		<-s.Notices
+	}
 }
 
 //
