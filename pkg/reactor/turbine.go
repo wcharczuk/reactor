@@ -13,7 +13,9 @@ var (
 // NewTurbine returns a new turbine.
 func NewTurbine(cfg Config) *Turbine {
 	t := &Turbine{
-		Config:    cfg,
+		Component: Component{
+			Config: cfg,
+		},
 		InletTemp: cfg.BaseTempOrDefault(),
 	}
 	t.SpeedRPMAlarm = NewThresholdAlarm("Turbine", RPMThresholdMessageFormat, &t.SpeedRPM, TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning)
@@ -22,10 +24,10 @@ func NewTurbine(cfg Config) *Turbine {
 
 // Turbine generates power based on fan rpm.
 type Turbine struct {
-	Config
+	Component
 
 	SpeedRPM      float64
-	SpeedRPMAlarm ThresholdAlarm
+	SpeedRPMAlarm *ThresholdAlarm
 	Output        float64
 	InletTemp     float64
 }
@@ -52,5 +54,14 @@ func (t *Turbine) Simulate(quantum time.Duration) error {
 	}
 
 	t.Output = t.SpeedRPM * t.TurbineOutputRateMinuteOrDefault()
+
+	if err := t.SpeedRPMAlarm.Simulate(quantum); err != nil {
+		return nil
+	}
+
+	t.Component.FailureProbability = FailureProbability(t.SpeedRPMAlarm.Severity())
+	if err := t.Component.Simulate(quantum); err != nil {
+		return err
+	}
 	return nil
 }

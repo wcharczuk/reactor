@@ -42,8 +42,6 @@ func (s *Simulation) Simulate(quantum time.Duration) error {
 	var i Input
 	for x := 0; x < inputs; x++ {
 		i = <-s.Inputs
-
-		// check if we entered a 127 => 127 like change ...
 		if i.Done() {
 			continue
 		}
@@ -55,6 +53,17 @@ func (s *Simulation) Simulate(quantum time.Duration) error {
 			s.Inputs <- i
 		}
 	}
+
+	for _, a := range s.Reactor.Alarms() {
+		if a.New() {
+			s.Message(a.String())
+			if a.Severity() == SeverityFatal {
+				s.Notices <- NewNotice(SeverityFatal, "Alarm", a.String())
+			}
+			a.Seen()
+		}
+	}
+
 	s.TimeSinceStart = s.TimeSinceStart + quantum
 	return nil
 }

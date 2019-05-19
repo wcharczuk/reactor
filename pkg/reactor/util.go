@@ -135,3 +135,17 @@ func Below(max int) func(int) error {
 func ValidUint8(v int) error {
 	return Between(0, int(math.MaxUint8))(v)
 }
+
+// FailureProbability returns a failure probability based on an alarm severity.
+func FailureProbability(severity string) float64 {
+	switch severity {
+	case SeverityFatal:
+		return 0.8
+	case SeverityCritical:
+		return 0.2
+	case SeverityWarning: 
+		return 0.05
+	default:
+		return 0
+	}
+}

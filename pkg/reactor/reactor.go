@@ -37,9 +37,9 @@ type Reactor struct {
 	Config
 
 	ContainmentTemp      float64
-	ContainmentTempAlarm ThresholdAlarm
+	ContainmentTempAlarm *ThresholdAlarm
 	CoreTemp             float64
-	CoreTempAlarm        ThresholdAlarm
+	CoreTempAlarm        *ThresholdAlarm
 
 	ControlRods []*ControlRod
 	Primary     *Pump

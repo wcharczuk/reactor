@@ -1,14 +1,17 @@
 package reactor
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 var (
 	_ Alarm = (*ThresholdAlarm)(nil)
 )
 
 // NewThresholdAlarm returns a new threshold alarm.
-func NewThresholdAlarm(component, messageFormat string, value *float64, fatalThreshold, criticalThreshold, warningThreshold float64) ThresholdAlarm {
-	return ThresholdAlarm{
+func NewThresholdAlarm(component, messageFormat string, value *float64, fatalThreshold, criticalThreshold, warningThreshold float64) *ThresholdAlarm {
+	return &ThresholdAlarm{
 		Component:         component,
 		MessageFormat:     messageFormat,
 		Value:             value,
@@ -20,13 +23,35 @@ func NewThresholdAlarm(component, messageFormat string, value *float64, fatalThr
 
 // ThresholdAlarm is a condition that requires attention.
 type ThresholdAlarm struct {
+	new bool
+
 	Component     string
 	MessageFormat string
-	Value         *float64
+
+	// Value is a reference to the value to check.
+	Value *float64
 
 	FatalThreshold    float64
 	CriticalThreshold float64
 	WarningThreshold  float64
+}
+
+// New returns if the alarm has recently fired.
+func (ta *ThresholdAlarm) New() bool {
+	return ta.new
+}
+
+// Seen marks an alarm as not new.
+func (ta *ThresholdAlarm) Seen() {
+	ta.new = false
+}
+
+// Simulate simulates the alarm triggering.
+func (ta *ThresholdAlarm) Simulate(quantum time.Duration) error {
+	if ta.Threshold() > 0 {
+		ta.new = true
+	}
+	return nil
 }
 
 // Threshold returns the threshold the alarm is above.
@@ -57,32 +82,17 @@ func (ta ThresholdAlarm) Severity() string {
 	return ""
 }
 
-// Active indicates the alarm is active.
+// Active returns if the alarm is active.
 func (ta ThresholdAlarm) Active() bool {
-	if *ta.Value > ta.FatalThreshold {
-		return true
-	}
-	if *ta.Value > ta.CriticalThreshold {
-		return true
-	}
-	if *ta.Value > ta.WarningThreshold {
-		return true
-	}
-	return false
+	return ta.Threshold() > 0
 }
 
 // Message returns the message.
 func (ta ThresholdAlarm) Message() string {
-	if ta.Active() {
-		return fmt.Sprintf(ta.MessageFormat, ta.Threshold())
-	}
-	return ""
+	return fmt.Sprintf(ta.MessageFormat, ta.Threshold())
 }
 
 // String implements fmt.Stringer.
 func (ta ThresholdAlarm) String() string {
-	if ta.Active() {
-		return fmt.Sprintf("%s %s: %s (active)", ta.Severity(), ta.Component, ta.Message())
-	}
-	return fmt.Sprintf("%s %s: %s (inactive)", ta.Severity(), ta.Component, ta.Message())
+	return fmt.Sprintf("%s %s: %s", ta.Severity(), ta.Component, ta.Message())
 }

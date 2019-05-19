@@ -8,12 +8,20 @@ import (
 // NewControlRod returns a new control rod.
 func NewControlRod(cfg Config, index int) *ControlRod {
 	cr := &ControlRod{
-		Config:   cfg,
+		Component: Component{
+			Config: cfg,
+		},
 		Index:    index,
 		Position: PositionMax,
 		Temp:     cfg.BaseTempOrDefault(),
 	}
-	cr.TempAlarm = NewThresholdAlarm(fmt.Sprintf("Control Rod %d", index), TempThresholdMessageFormat, &cr.Temp, ControlRodTempFatal, ControlRodTempCritical, ControlRodTempWarning)
+
+	cr.TempAlarm = NewThresholdAlarm(
+		fmt.Sprintf("Control Rod %d", index),
+		TempThresholdMessageFormat,
+		&cr.Temp,
+		ControlRodTempFatal, ControlRodTempCritical, ControlRodTempWarning,
+	)
 	return cr
 }
 
@@ -22,12 +30,13 @@ func NewControlRod(cfg Config, index int) *ControlRod {
 // If a control rod is fully retracted, i.e. its position 0,
 // then the reaction is fully active.
 type ControlRod struct {
-	Config
+	Component
 
-	Index     int
-	Position  Position
+	Index    int
+	Position Position
+
 	Temp      float64
-	TempAlarm ThresholdAlarm
+	TempAlarm *ThresholdAlarm
 }
 
 // Alarms implements alarm provider.
@@ -37,7 +46,18 @@ func (cr *ControlRod) Alarms() []Alarm {
 
 // Simulate applies a simulation tick.
 func (cr *ControlRod) Simulate(quantum time.Duration) error {
+	// update the temperatures
 	rate := float64(PositionMax-cr.Position) * cr.FissionRateMinuteOrDefault() * (float64(quantum) / float64(time.Minute))
 	cr.Temp = cr.Temp + rate
+
+	if err := cr.TempAlarm.Simulate(quantum); err != nil {
+		return err
+	}
+
+	cr.Component.FailureProbability = FailureProbability(cr.TempAlarm.Severity())
+	if err := cr.Component.Simulate(quantum); err != nil {
+		return err
+	}
+
 	return nil
 }
