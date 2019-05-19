@@ -7,13 +7,12 @@ import (
 // Interface Assertions
 var (
 	_ Simulatable = (*Reactor)(nil)
-	_ Alarmable   = (*Reactor)(nil)
 )
 
 // NewReactor returns a new reactor.
 func NewReactor(cfg Config) *Reactor {
 	r := &Reactor{
-		Config:          cfg,
+		Component:       NewComponent(cfg),
 		CoreTemp:        cfg.BaseTempOrDefault(),
 		ContainmentTemp: cfg.BaseTempOrDefault(),
 		ControlRods: []*ControlRod{
@@ -27,14 +26,23 @@ func NewReactor(cfg Config) *Reactor {
 		Secondary: NewPump(cfg, "Secondary"),
 		Turbine:   NewTurbine(cfg),
 	}
-	r.ContainmentTempAlarm = NewThresholdAlarm("Containment", TempThresholdMessageFormat, &r.ContainmentTemp, ContainmentTempFatal, ContainmentTempCritical, ContainmentTempWarning)
-	r.CoreTempAlarm = NewThresholdAlarm("Core", TempThresholdMessageFormat, &r.CoreTemp, CoreTempFatal, CoreTempCritical, CoreTempWarning)
+
+	r.ContainmentTempAlarm = NewThresholdAlarm(
+		"Containment Temp",
+		&r.ContainmentTemp,
+		SeverityThreshold(ContainmentTempFatal, ContainmentTempCritical, ContainmentTempWarning),
+	)
+	r.CoreTempAlarm = NewThresholdAlarm(
+		"Core Temp",
+		&r.CoreTemp,
+		SeverityThreshold(CoreTempFatal, CoreTempCritical, CoreTempWarning),
+	)
 	return r
 }
 
 // Reactor is the main simulated object.
 type Reactor struct {
-	Config
+	*Component
 
 	ContainmentTemp      float64
 	ContainmentTempAlarm *ThresholdAlarm
@@ -53,7 +61,6 @@ func (r *Reactor) Alarms() []Alarm {
 		r.ContainmentTempAlarm,
 		r.CoreTempAlarm,
 	}
-
 	for _, cr := range r.ControlRods {
 		alarms = append(alarms, cr.Alarms()...)
 	}
@@ -72,39 +79,37 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 		}
 		Transfer(&cr.Temp, &r.CoreTemp, quantum, r.ConductionRateMinuteOrDefault()/float64(len(r.ControlRods)))
 	}
-
-	// transfer core heat to primary inlet
 	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
-
-	// transfer some of the core heat to the containment vessel
 	Transfer(&r.CoreTemp, &r.ContainmentTemp, quantum, r.RadiantRateMinuteOrDefault())
+	Transfer(&r.ContainmentTemp, r.baseTemp(), quantum, r.RadiantRateMinuteOrDefault()/2.0)
 
-	// transfer some containment temperature to the outside.
-	containmentBase := float64(r.BaseTempOrDefault())
-	Transfer(&r.ContainmentTemp, &containmentBase, quantum, r.RadiantRateMinuteOrDefault()/2.0)
-
-	// transfer primary inlet to outlet based on speed
 	if err := r.Primary.Simulate(quantum); err != nil {
 		return err
 	}
-
-	// transfer primary outlet to secondary inlet
 	Transfer(&r.Primary.OutletTemp, &r.Secondary.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
-
-	// transfer secondary inlet to outlet based on speed
 	if err := r.Secondary.Simulate(quantum); err != nil {
 		return err
 	}
-
-	// transfer secondary outlet to turbine inlet
 	Transfer(&r.Secondary.OutletTemp, &r.Turbine.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
-
-	base := r.BaseTempOrDefault()
-	Transfer(&r.Turbine.InletTemp, &base, quantum, r.ConductionRateMinuteOrDefault())
-
+	Transfer(&r.Turbine.InletTemp, r.baseTemp(), quantum, r.ConductionRateMinuteOrDefault())
 	if err := r.Turbine.Simulate(quantum); err != nil {
 		return err
 	}
 
+	for _, alarm := range r.Alarms() {
+		if err := alarm.Simulate(quantum); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+//
+// utility functions
+//
+
+func (r *Reactor) baseTemp() *float64 {
+	base := r.BaseTempOrDefault()
+	return &base
 }

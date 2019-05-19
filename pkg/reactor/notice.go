@@ -6,7 +6,7 @@ import (
 )
 
 // NewNotice returtns a new notice.
-func NewNotice(severity, heading string, messageLines ...string) Notice {
+func NewNotice(severity Severity, heading string, messageLines ...string) Notice {
 	var width int
 	for _, line := range messageLines {
 		if width < len(line) {
@@ -25,7 +25,7 @@ func NewNotice(severity, heading string, messageLines ...string) Notice {
 // Notice is an alert or info message.
 type Notice struct {
 	image.Rectangle
-	Severity string
+	Severity Severity
 	Heading  string
 	Lines    []string
 }

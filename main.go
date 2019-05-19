@@ -314,6 +314,7 @@ func (rc *RenderContext) Render() func() error {
 			containmentTemp.TextStyle.Bg, containmentTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.ContainmentTempAlarm.Severity())
 
 			turbineInletTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.Turbine.InletTemp)
+			turbineInletTemp.TextStyle.Bg, turbineInletTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.Turbine.InletTempAlarm.Severity())
 
 			turbineSpeed.Text = fmt.Sprintf("%.2frpm", rc.Simulation.Reactor.Turbine.SpeedRPM)
 			turbineSpeed.TextStyle.Bg, turbineSpeed.TextStyle.Fg = severity(rc.Simulation.Reactor.Turbine.SpeedRPMAlarm.Severity())
@@ -443,7 +444,7 @@ func h(c rectProvider) int {
 	return c.GetRect().Dy()
 }
 
-func severity(severity string) (background, foreground ui.Color) {
+func severity(severity reactor.Severity) (background, foreground ui.Color) {
 	switch severity {
 	case reactor.SeverityFatal:
 		{

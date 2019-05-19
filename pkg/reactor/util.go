@@ -8,6 +8,22 @@ import (
 	"time"
 )
 
+// SeverityThreshold returns a new serverity provider based on (3) different severity states.
+func SeverityThreshold(fatal, critical, warning float64) func(float64) Severity {
+	return func(value float64) Severity {
+		if value > fatal {
+			return SeverityFatal
+		}
+		if value > critical {
+			return SeverityCritical
+		}
+		if value > warning {
+			return SeverityWarning
+		}
+		return SeverityNone
+	}
+}
+
 // Percent returns the percent of the maximum of a given value.
 func Percent(value uint8) int {
 	return int((float64(value) / float64(math.MaxUint8)) * 100)
@@ -137,13 +153,13 @@ func ValidUint8(v int) error {
 }
 
 // FailureProbability returns a failure probability based on an alarm severity.
-func FailureProbability(severity string) float64 {
+func FailureProbability(severity Severity) float64 {
 	switch severity {
 	case SeverityFatal:
 		return 0.8
 	case SeverityCritical:
 		return 0.2
-	case SeverityWarning: 
+	case SeverityWarning:
 		return 0.05
 	default:
 		return 0

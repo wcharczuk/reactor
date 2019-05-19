@@ -8,28 +8,33 @@ import (
 // Interface Assertions
 var (
 	_ Simulatable = (*Pump)(nil)
-	_ Alarmable   = (*Pump)(nil)
 )
 
 // NewPump returns a new pump.
 func NewPump(cfg Config, name string) *Pump {
 	p := &Pump{
-		Component: Component{
-			Config: cfg,
-		},
+		Component:  NewComponent(cfg),
 		Name:       name,
 		Throttle:   PositionMin,
 		InletTemp:  cfg.BaseTempOrDefault(),
 		OutletTemp: cfg.BaseTempOrDefault(),
 	}
-	p.InletTempAlarm = NewThresholdAlarm(fmt.Sprintf("%s Pump", name), TempThresholdMessageFormat, &p.InletTemp, PumpInletFatal, PumpInletCritical, PumpInletWarning)
-	p.OutletTempAlarm = NewThresholdAlarm(fmt.Sprintf("%s Pump", name), TempThresholdMessageFormat, &p.OutletTemp, PumpInletFatal, PumpInletCritical, PumpInletWarning)
+	p.InletTempAlarm = NewThresholdAlarm(
+		fmt.Sprintf("%s Pump Inlet", name),
+		&p.InletTemp,
+		SeverityThreshold(PumpInletFatal, PumpInletCritical, PumpInletWarning),
+	)
+	p.OutletTempAlarm = NewThresholdAlarm(
+		fmt.Sprintf("%s Pump Outlet", name),
+		&p.OutletTemp,
+		SeverityThreshold(PumpOutletFatal, PumpOutletCritical, PumpOutletWarning),
+	)
 	return p
 }
 
 // Pump moves coolant around.
 type Pump struct {
-	Component
+	*Component
 
 	Name            string
 	Throttle        Position
@@ -50,10 +55,5 @@ func (p *Pump) Alarms() []Alarm {
 // Simulate processes a simulation tick.
 func (p *Pump) Simulate(quantum time.Duration) error {
 	Transfer(&p.InletTemp, &p.OutletTemp, quantum, float64(p.Throttle)*p.PrimaryTransferRateMinuteOrDefault())
-
-	p.Component.FailureProbability = (FailureProbability(p.InletTempAlarm.Severity()) + FailureProbability(p.OutletTempAlarm.Severity()))
-	if err := p.Component.Simulate(quantum); err != nil {
-		return err
-	}
 	return nil
 }

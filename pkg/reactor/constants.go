@@ -1,14 +1,5 @@
 package reactor
 
-// Alarm Severity
-const (
-	SeverityFatal    = "FATAL"
-	SeverityCritical = "CRITICAL"
-	SeverityWarning  = "WARN"
-	SeverityInfo     = "INFO"
-	SeverityNone     = ""
-)
-
 const (
 	// PositionMin is the maximum minimum value.
 	PositionMin Position = 0.0

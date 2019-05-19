@@ -54,13 +54,14 @@ func (s *Simulation) Simulate(quantum time.Duration) error {
 		}
 	}
 
-	for _, a := range s.Reactor.Alarms() {
-		if a.New() {
-			s.Message(a.String())
-			if a.Severity() == SeverityFatal {
-				s.Notices <- NewNotice(SeverityFatal, "Alarm", a.String())
+	alarms := s.Reactor.Alarms()
+	for _, alarm := range alarms {
+		if alarm.New() {
+			s.Message(alarm.String())
+			if alarm.Severity() > SeverityCritical {
+				s.Notices <- NewNotice(alarm.Severity(), "Alarm", alarm.String())
 			}
-			a.Seen()
+			alarm.Seen()
 		}
 	}
 

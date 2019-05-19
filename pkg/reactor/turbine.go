@@ -7,35 +7,45 @@ import (
 // Interface Assertions
 var (
 	_ Simulatable = (*Turbine)(nil)
-	_ Alarmable   = (*Turbine)(nil)
 )
 
 // NewTurbine returns a new turbine.
 func NewTurbine(cfg Config) *Turbine {
 	t := &Turbine{
-		Component: Component{
-			Config: cfg,
-		},
+		Component: NewComponent(cfg),
 		InletTemp: cfg.BaseTempOrDefault(),
 	}
-	t.SpeedRPMAlarm = NewThresholdAlarm("Turbine", RPMThresholdMessageFormat, &t.SpeedRPM, TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning)
+	t.SpeedRPMAlarm = NewThresholdAlarm(
+		"Turbine",
+		&t.SpeedRPM,
+		SeverityThreshold(TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning),
+	)
+	t.InletTempAlarm = NewThresholdAlarm(
+		"Turbine Inlet",
+		&t.InletTemp,
+		SeverityThreshold(PumpInletFatal, PumpInletCritical, PumpInletWarning),
+	)
 	return t
 }
 
 // Turbine generates power based on fan rpm.
 type Turbine struct {
-	Component
+	*Component
+
+	Output float64
 
 	SpeedRPM      float64
 	SpeedRPMAlarm *ThresholdAlarm
-	Output        float64
-	InletTemp     float64
+
+	InletTemp      float64
+	InletTempAlarm *ThresholdAlarm
 }
 
 // Alarms implements alarmable.
 func (t *Turbine) Alarms() []Alarm {
 	return []Alarm{
 		t.SpeedRPMAlarm,
+		t.InletTempAlarm,
 	}
 }
 
@@ -46,7 +56,7 @@ func (t *Turbine) Simulate(quantum time.Duration) error {
 	accel := rate * t.TurbineThermalRateMinuteOrDefault() * delta
 	deccel := rate * t.TurbineDragOrDefault() * t.SpeedRPM
 
-	t.SpeedRPM = t.SpeedRPM + accel
+	t.SpeedRPM = t.SpeedRPM + (accel / 2.0)
 	t.SpeedRPM = t.SpeedRPM - deccel
 
 	if t.SpeedRPM < 0 {
@@ -54,14 +64,5 @@ func (t *Turbine) Simulate(quantum time.Duration) error {
 	}
 
 	t.Output = t.SpeedRPM * t.TurbineOutputRateMinuteOrDefault()
-
-	if err := t.SpeedRPMAlarm.Simulate(quantum); err != nil {
-		return nil
-	}
-
-	t.Component.FailureProbability = FailureProbability(t.SpeedRPMAlarm.Severity())
-	if err := t.Component.Simulate(quantum); err != nil {
-		return err
-	}
 	return nil
 }
