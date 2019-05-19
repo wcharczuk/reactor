@@ -285,7 +285,7 @@ func (rc *RenderContext) Render() func() error {
 		rc.Controls = append(rc.Controls, secondaryOutletTemp)
 
 		for {
-			noticeTop := 3
+			noticeTop := 0
 			noticeCount := len(rc.Simulation.Notices)
 			for x := 0; x < noticeCount; x++ {
 				notice := <-rc.Simulation.Notices
