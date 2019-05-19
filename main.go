@@ -64,12 +64,12 @@ func main() {
 // RenderContext is everything needed to render the simulation.
 type RenderContext struct {
 	Command         string
+	OutputHistory   []PointInTimeSample
 	Simulation      *reactor.Simulation
 	Controls        []ui.Drawable
 	ControlRods     []*widgets.Gauge
 	ControlRodTemps []*widgets.Paragraph
 	Notices         []*widgets.Paragraph
-	OutputHistory   []PointInTimeSample
 }
 
 // AllControls returns a unified list of controls.
@@ -180,6 +180,8 @@ func (rc *RenderContext) HandleInput(e ui.Event) (err error) {
 // Render renders controls and advances the simulation.
 func (rc *RenderContext) Render() func() error {
 	totalWidth := 160
+	totalHeight := 24
+
 	gaugeWidth := 50
 	controlRodTempWidth := 15
 	messageListWidth := 60
@@ -202,7 +204,7 @@ func (rc *RenderContext) Render() func() error {
 
 		messageList := widgets.NewParagraph()
 		messageList.Title = "Log"
-		messageList.SetRect(r(totalWidth-messageListWidth, 0, messageListWidth, 24))
+		messageList.SetRect(r(totalWidth-messageListWidth, 0, messageListWidth, totalHeight))
 		rc.Controls = append(rc.Controls, messageList)
 
 		command := widgets.NewParagraph()
@@ -375,6 +377,30 @@ func (rc *RenderContext) SampleStats() func() error {
 	}
 }
 
+// utility functions
+
+func (rc *RenderContext) getOutputHistory(last int) (data []float64) {
+	if len(rc.OutputHistory) == 0 {
+		return
+	}
+
+	var samples []PointInTimeSample
+	if len(rc.OutputHistory) > last {
+		samples = rc.OutputHistory[:len(rc.OutputHistory)-last]
+	} else {
+		samples = rc.OutputHistory[:]
+	}
+
+	if len(samples) == 0 {
+		return
+	}
+
+	for _, value := range samples {
+		data = append(data, value.Value)
+	}
+	return
+}
+
 //
 // utility types
 //
@@ -450,20 +476,20 @@ func severity(severity reactor.Severity) (background, foreground ui.Color) {
 	switch severity {
 	case reactor.SeverityFatal:
 		{
-			background = ui.ColorRed
+			background = ui.ColorMagenta
 			foreground = ui.ColorWhite
 			return
 		}
 	case reactor.SeverityCritical:
 		{
-			background = ui.ColorYellow
-			foreground = ui.ColorWhite
+			background = ui.ColorRed
+			foreground = ui.ColorBlack
 			return
 		}
 	case reactor.SeverityWarning:
 		{
 			background = ui.ColorYellow
-			foreground = ui.ColorWhite
+			foreground = ui.ColorBlack
 			return
 		}
 	default:

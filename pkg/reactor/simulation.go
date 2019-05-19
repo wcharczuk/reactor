@@ -81,10 +81,12 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 		}
 	case "alert":
 		{
+			s.Messagef("alarm: %s", strings.Join(args, " "))
 			s.Notices <- NewNotice(SeverityFatal, "Alert", strings.Join(args, " "))
 		}
 	case "notice":
 		{
+			s.Messagef("notice: %s", strings.Join(args, " "))
 			s.Notices <- NewNotice(SeverityInfo, "Notice", strings.Join(args, " "))
 		}
 	case "help", "?":
