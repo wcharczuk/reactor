@@ -27,9 +27,9 @@ const (
 	PumpInletCritical = 2000.0
 	PumpInletFatal    = 3000.0
 
-	PumpOutletWarning  = 500.0
-	PumpOutletCritical = 1000.0
-	PumpOutletFatal    = 1500.0
+	PumpOutletWarning  = 750.0
+	PumpOutletCritical = 1500.0
+	PumpOutletFatal    = 3000.0
 
 	TurbineRPMWarning  = 5000.0
 	TurbineRPMCritical = 6000.0

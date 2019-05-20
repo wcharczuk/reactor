@@ -88,19 +88,19 @@ const (
 	// DefaultConvectionRateMinute is a heat transfer constant.
 	DefaultConvectionRateMinute = 256
 	// DefaultRadiantRateMinute is a heat transfer constant.
-	DefaultRadiantRateMinute = 0.1
+	DefaultRadiantRateMinute = 0.01
 	// DefaultBaseTemp is the starting reactor core temperature.
 	DefaultBaseTemp = 10.0
 	// DefaultControlRodAdjustment is the default control rod adjustment rate.
 	DefaultControlRodAdjustment = 10 * time.Second
 	// DefaultPumpThrottleAdjustment is the default pump throttle adjustment rate.
 	DefaultPumpThrottleAdjustment = 5 * time.Second
-	// DefaultPrimaryTransferRateMinute is the default primary btu transfer.
-	// The throttle * this is how much heat we can move from the inlet to the outlet.
-	DefaultPrimaryTransferRateMinute = 1024
-	// DefaultSecondaryTransferRateMinute is the default secondary btu transfer.
-	// The throttle * this is how much heat we can move from the inlet to the outlet.
-	DefaultSecondaryTransferRateMinute = 1024
+	// DefaultPrimaryTransferRateMinute is the default primary heat transfer.
+	// The throttle * this is how much heat we can move from the inlet to the outlet per minute.
+	DefaultPrimaryTransferRateMinute = 4096
+	// DefaultSecondaryTransferRateMinute is the default secondary heat transfer.
+	// The throttle * this is how much heat we can move from the inlet to the outlet per minute.k
+	DefaultSecondaryTransferRateMinute = 4096
 )
 
 // TickIntervalOrDefault returns the tick interval or a default.

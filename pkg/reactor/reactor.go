@@ -81,9 +81,6 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 	}
 	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
 
-	Transfer(&r.CoreTemp, &r.ContainmentTemp, quantum, r.RadiantRateMinuteOrDefault())
-	Transfer(&r.ContainmentTemp, r.baseTemp(), quantum, r.RadiantRateMinuteOrDefault())
-
 	Transfer(&r.CoreTemp, &r.Turbine.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
 	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
 	Transfer(&r.CoreTemp, &r.Primary.OutletTemp, quantum, r.RadiantRateMinuteOrDefault())
@@ -102,6 +99,9 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 	if err := r.Turbine.Simulate(quantum); err != nil {
 		return err
 	}
+
+	Transfer(&r.CoreTemp, &r.ContainmentTemp, quantum, r.ConvectionRateMinuteOrDefault())
+	Transfer(&r.ContainmentTemp, r.baseTemp(), quantum, r.RadiantRateMinuteOrDefault())
 
 	for _, alarm := range r.Alarms() {
 		if err := alarm.Simulate(quantum); err != nil {
