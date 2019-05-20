@@ -3,6 +3,7 @@ package reactor
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,31 @@ func SeverityThreshold(fatal, critical, warning float64) func(float64) Severity 
 			return SeverityWarning
 		}
 		return SeverityNone
+	}
+}
+
+// RollFailure rolls a failure probability with the stdlib random provider.
+func RollFailure(probability float64, quantum time.Duration) bool {
+	return RollFailureFromProvider(rand.Float64, probability, quantum)
+}
+
+// RollFailureFromProvider rolls a failure probability with a given random provider.
+func RollFailureFromProvider(randomProvider func() float64, probability float64, quantum time.Duration) bool {
+	probability = probability / (float64(quantum) / float64(time.Minute))
+	return randomProvider() >= probability
+}
+
+// FailureProbability returns a failure probability based on an alarm severity.
+func FailureProbability(severity Severity) float64 {
+	switch severity {
+	case SeverityFatal:
+		return 0.8
+	case SeverityCritical:
+		return 0.2
+	case SeverityWarning:
+		return 0.05
+	default:
+		return 0
 	}
 }
 
@@ -150,18 +176,4 @@ func Below(max int) func(int) error {
 // ValidUint8 returns a validator for uint8s.
 func ValidUint8(v int) error {
 	return Between(0, int(math.MaxUint8))(v)
-}
-
-// FailureProbability returns a failure probability based on an alarm severity.
-func FailureProbability(severity Severity) float64 {
-	switch severity {
-	case SeverityFatal:
-		return 0.8
-	case SeverityCritical:
-		return 0.2
-	case SeverityWarning:
-		return 0.05
-	default:
-		return 0
-	}
 }

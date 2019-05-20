@@ -13,13 +13,14 @@ func NewThresholdAlarm(name string, value *float64, severityProvider func(float6
 		Value:            value,
 		SeverityProvider: severityProvider,
 	}
-	ta.Observable = NewObservable(ta.Severity)
+	ta.SeverityObserver = NewSeverityObserver(ta.Severity)
 	return ta
 }
 
 // ThresholdAlarm is an alarm provider.
 type ThresholdAlarm struct {
-	*Observable
+	*SeverityObserver
+
 	Name             string
 	MessageFormat    string
 	Value            *float64

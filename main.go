@@ -287,6 +287,10 @@ func (rc *RenderContext) Render() func() error {
 		for {
 			noticeTop := 0
 			noticeCount := len(rc.Simulation.Notices)
+			for _, noticeBox := range rc.Notices {
+				noticeTop += h(noticeBox)
+			}
+
 			for x := 0; x < noticeCount; x++ {
 				notice := <-rc.Simulation.Notices
 

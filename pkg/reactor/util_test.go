@@ -25,3 +25,35 @@ func TestRelativeQuantum(t *testing.T) {
 	res = RelativeQuantum(0.5, 0.5, 1.0, time.Second)
 	assert.Zero(res)
 }
+
+func TestRollFailureFromProvider(t *testing.T) {
+	assert := assert.New(t)
+
+	fatal := func() float64 {
+		return 0.9
+	}
+	critical := func() float64 {
+		return 0.7
+	}
+	warning := func() float64 {
+		return 0.1
+	}
+	none := func() float64 {
+		return 0.01
+	}
+
+	assert.False(RollFailureFromProvider(none, FailureProbability(SeverityFatal), time.Minute))
+	assert.False(RollFailureFromProvider(warning, FailureProbability(SeverityFatal), time.Minute))
+	assert.False(RollFailureFromProvider(critical, FailureProbability(SeverityFatal), time.Minute))
+	assert.True(RollFailureFromProvider(fatal, FailureProbability(SeverityFatal), time.Minute))
+
+	assert.False(RollFailureFromProvider(none, FailureProbability(SeverityCritical), time.Minute))
+	assert.False(RollFailureFromProvider(warning, FailureProbability(SeverityCritical), time.Minute))
+	assert.True(RollFailureFromProvider(critical, FailureProbability(SeverityCritical), time.Minute))
+	assert.True(RollFailureFromProvider(fatal, FailureProbability(SeverityCritical), time.Minute))
+
+	assert.False(RollFailureFromProvider(none, FailureProbability(SeverityWarning), time.Minute))
+	assert.True(RollFailureFromProvider(warning, FailureProbability(SeverityWarning), time.Minute))
+	assert.True(RollFailureFromProvider(critical, FailureProbability(SeverityWarning), time.Minute))
+	assert.True(RollFailureFromProvider(fatal, FailureProbability(SeverityWarning), time.Minute))
+}
