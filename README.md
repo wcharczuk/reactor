@@ -1,6 +1,8 @@
 # reactor
 A reactor simulator. Completely useless. Only for fun.
 
+[![asciicast](https://asciinema.org/a/tgnS06YEMTcc0F0PjgJ4Jvm21.svg)](https://asciinema.org/a/tgnS06YEMTcc0F0PjgJ4Jvm21)
+
 # installation
 
 ```bash
