@@ -6,28 +6,29 @@ import "time"
 var DefaultConfig = Config{
 	Scripts: map[string][]string{
 		"scram": []string{
-			"initiating emergency shutdown of the reactor",
+			"notice initiating emergency shutdown of the reactor",
 			"cr * 255",
 			"pp 255",
 			"sp 255",
+			"notice scram initiated",
 		},
 		"base": []string{
-			"notice reactor set to base config",
 			"cr * 135",
 			"pp 255",
 			"sp 255",
+			"notice reactor set to base config",
 		},
 		"full": []string{
-			"notice reactor set to full output config",
 			"cr * 0",
 			"pp 255",
 			"sp 255",
+			"notice reactor set to full output config",
 		},
 		"fail": []string{
-			"notice reactor set to failure config",
 			"cr * 0",
 			"pp 0",
 			"sp 0",
+			"notice reactor set to failure config",
 		},
 	},
 }

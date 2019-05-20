@@ -89,6 +89,10 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			s.Messagef("notice: %s", strings.Join(args, " "))
 			s.Notices <- NewNotice(SeverityInfo, "Notice", strings.Join(args, " "))
 		}
+	case "message":
+		{
+			s.Message(strings.Join(args, " "))
+		}
 	case "help", "?":
 		{
 			lines := []string{
@@ -97,7 +101,11 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 				"> cr ([0-9],*) [0-255] : set control rod position (by index, or * for all)",
 				"> pp [0-255] : primary pump throttle",
 				"> sp [0-255] : secondary pump throttle",
+				"> notice <args>: display a notice",
+				"> alert <args>: display an alert",
+				"> message <args>: log a message",
 				"> scripts : display a list of scripts",
+				"> script <script name> : display the contents of a script",
 				"> <script name> : invoke a script",
 			}
 			s.Notices <- NewNotice(SeverityInfo, "Help", lines...)
@@ -108,6 +116,15 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			lines = append(lines, fmt.Sprintf("%s (%d commands)", name, len(script)))
 		}
 		s.Notices <- NewNotice(SeverityInfo, "Scripts", lines...)
+	case "script":
+		if len(args) < 1 {
+			return errors.New("invalid `script` call; must provide a script name")
+		}
+		if script, ok := s.Config.Scripts[args[0]]; ok {
+			s.Notices <- NewNotice(SeverityInfo, "script: "+args[0], script...)
+			return nil
+		}
+		return fmt.Errorf("script not found; %s", args[0])
 	case "cr":
 		{
 			if len(args) < 2 {

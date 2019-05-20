@@ -20,12 +20,12 @@ func NewPump(cfg Config, name string) *Pump {
 		OutletTemp: cfg.BaseTempOrDefault(),
 	}
 	p.InletTempAlarm = NewThresholdAlarm(
-		fmt.Sprintf("%s Pump Inlet", name),
+		fmt.Sprintf("%s Pump Inlet Temp", name),
 		&p.InletTemp,
 		SeverityThreshold(PumpInletFatal, PumpInletCritical, PumpInletWarning),
 	)
 	p.OutletTempAlarm = NewThresholdAlarm(
-		fmt.Sprintf("%s Pump Outlet", name),
+		fmt.Sprintf("%s Pump Outlet Temp", name),
 		&p.OutletTemp,
 		SeverityThreshold(PumpOutletFatal, PumpOutletCritical, PumpOutletWarning),
 	)
