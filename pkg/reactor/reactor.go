@@ -12,6 +12,7 @@ var (
 // NewReactor returns a new reactor.
 func NewReactor(cfg Config) *Reactor {
 	r := &Reactor{
+		NeutronSource:   NewNeutronSource(cfg),
 		Component:       NewComponent(cfg),
 		CoreTemp:        cfg.BaseTempOrDefault(),
 		ContainmentTemp: cfg.BaseTempOrDefault(),
@@ -44,15 +45,18 @@ func NewReactor(cfg Config) *Reactor {
 type Reactor struct {
 	*Component
 
+	ReactionRate float64
+
 	ContainmentTemp      float64
 	ContainmentTempAlarm *ThresholdAlarm
 	CoreTemp             float64
 	CoreTempAlarm        *ThresholdAlarm
 
-	ControlRods []*ControlRod
-	Primary     *Pump
-	Secondary   *Pump
-	Turbine     *Turbine
+	NeutronSource *NeutronSource
+	ControlRods   []*ControlRod
+	Primary       *Pump
+	Secondary     *Pump
+	Turbine       *Turbine
 }
 
 // Alarms fetches the current alarms.
@@ -72,6 +76,7 @@ func (r *Reactor) Alarms() []Alarm {
 
 // Simulate advances the simulation by the quantum.
 func (r *Reactor) Simulate(quantum time.Duration) error {
+
 	// create core heat
 	for _, cr := range r.ControlRods {
 		if err := cr.Simulate(quantum); err != nil {

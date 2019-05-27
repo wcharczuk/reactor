@@ -39,6 +39,8 @@ type Config struct {
 	TickInterval time.Duration `yaml:"tickInterval"`
 	// BaseTemp is the simulation base temperature.
 	BaseTemp float64 `yaml:"baseTemp"`
+	// NeutronFuel is the amount of base neutron emiter fuel the reactor starts with.
+	NeutronFuel float64 `yaml:"neutronFuel"`
 	// FissionRateMinute is the btu per minute produced by a control rod.
 	FissionRateMinute float64 `yaml:"fissionRate"`
 	// TurbineOutputRateMinute is the rpm => kw/hr conversion rate.
@@ -75,6 +77,12 @@ type Config struct {
 const (
 	// DefaultTickInterval is the default tick interval
 	DefaultTickInterval = 250 * time.Millisecond
+	// DefaultBaseTemp is the starting reactor core temperature.
+	DefaultBaseTemp = 10.0
+	// DefaultNeutronFuel is the default starting neutron fuel.
+	DefaultNeutronFuel = 1024.0
+	// DefaultNeutronRateMinute is the default consumption rate per min at max extension.
+	DefaultNeutronRateMinute = 1.0
 	// DefaultFissionRateMinute 16k Degrees a minute at full extension.
 	DefaultFissionRateMinute = 16384
 	// DefaultTurbineOutputRateMinute is the rpm => kw/hr ratio.
@@ -89,8 +97,6 @@ const (
 	DefaultConvectionRateMinute = 256
 	// DefaultRadiantRateMinute is a heat transfer constant.
 	DefaultRadiantRateMinute = 0.01
-	// DefaultBaseTemp is the starting reactor core temperature.
-	DefaultBaseTemp = 10.0
 	// DefaultControlRodAdjustment is the default control rod adjustment rate.
 	DefaultControlRodAdjustment = 10 * time.Second
 	// DefaultPumpThrottleAdjustment is the default pump throttle adjustment rate.
@@ -117,6 +123,14 @@ func (c Config) BaseTempOrDefault() float64 {
 		return c.BaseTemp
 	}
 	return DefaultBaseTemp
+}
+
+// NeutronFuelOrDefault returns the neutron fuel or a default.
+func (c Config) NeutronFuelOrDefault() float64 {
+	if c.NeutronFuel > 0 {
+		return c.NeutronFuel
+	}
+	return DefaultNeutronFuel
 }
 
 // FissionRateMinuteOrDefault returns the fission rate per minute or a default.
