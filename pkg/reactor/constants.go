@@ -13,6 +13,15 @@ const (
 	RPMThresholdMessageFormat  = "RPM Above %0.2f"
 )
 
+const (
+	// XenonFulcrum is the temperature at which xenon is burned off.
+	XenonFulcrum = 500.0
+	// XenonThreshold is the minimum threshold for where the reactor will create xenon.
+	XenonThreshold = 100.0
+	// SteamThreshold is the temperature at which water turns to steam.
+	SteamThreshold = 100.0
+)
+
 // Alarm Thresholds
 const (
 	CoreTempWarning  = 1000.0

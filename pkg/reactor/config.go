@@ -41,6 +41,11 @@ type Config struct {
 	BaseTemp float64 `yaml:"baseTemp"`
 	// NeutronFuel is the amount of base neutron emiter fuel the reactor starts with.
 	NeutronFuel float64 `yaml:"neutronFuel"`
+
+	// VoidCoefficient is the amount steam (void) contributes to reactivity.
+	VoidCoefficient float64 `yaml:"voidCoefficient"`
+	// TempCoefficient is the amount the temperature contributes to reactivity.
+	TempCoefficient float64 `yaml:"tempCoefficient"`
 	// FissionRateMinute is the btu per minute produced by a control rod.
 	FissionRateMinute float64 `yaml:"fissionRate"`
 	// TurbineOutputRateMinute is the rpm => kw/hr conversion rate.
@@ -83,6 +88,10 @@ const (
 	DefaultNeutronFuel = 1024.0
 	// DefaultNeutronRateMinute is the default consumption rate per min at max extension.
 	DefaultNeutronRateMinute = 1.0
+	// DefaultVoidCoefficient is the default void coefficient.
+	DefaultVoidCoefficient = 1.05
+	// DefaultTempCoefficient is the default temperature coefficient.
+	DefaultTempCoefficient = 0.90
 	// DefaultFissionRateMinute 16k Degrees a minute at full extension.
 	DefaultFissionRateMinute = 16384
 	// DefaultTurbineOutputRateMinute is the rpm => kw/hr ratio.
@@ -131,6 +140,22 @@ func (c Config) NeutronFuelOrDefault() float64 {
 		return c.NeutronFuel
 	}
 	return DefaultNeutronFuel
+}
+
+// VoidCoefficientOrDefault returns the void coefficient or a default.
+func (c Config) VoidCoefficientOrDefault() float64 {
+	if c.VoidCoefficient > 0 {
+		return c.VoidCoefficient
+	}
+	return DefaultVoidCoefficient
+}
+
+// TempCoefficientOrDefault returns the temperature coefficient or a default.
+func (c Config) TempCoefficientOrDefault() float64 {
+	if c.TempCoefficient > 0 {
+		return c.TempCoefficient
+	}
+	return DefaultTempCoefficient
 }
 
 // FissionRateMinuteOrDefault returns the fission rate per minute or a default.
