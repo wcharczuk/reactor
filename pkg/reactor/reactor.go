@@ -28,15 +28,15 @@ func NewReactor(cfg Config) *Reactor {
 		Turbine:   NewTurbine(cfg),
 	}
 
-	r.CoreTempAlarm = NewThresholdAlarm(
-		"Core Temp",
-		&r.CoreTemp,
-		SeverityThreshold(CoreTempFatal, CoreTempCritical, CoreTempWarning),
-	)
 	r.ContainmentTempAlarm = NewThresholdAlarm(
 		"Containment Temp",
 		&r.ContainmentTemp,
 		SeverityThreshold(ContainmentTempFatal, ContainmentTempCritical, ContainmentTempWarning),
+	)
+	r.CoreTempAlarm = NewThresholdAlarm(
+		"Core Temp",
+		&r.CoreTemp,
+		SeverityThreshold(CoreTempFatal, CoreTempCritical, CoreTempWarning),
 	)
 	return r
 }
@@ -45,14 +45,13 @@ func NewReactor(cfg Config) *Reactor {
 type Reactor struct {
 	*Component
 
-	ReactionRate    float64
-	SteamFraction   float64
-	Xenon           float64
-	CoreTemp        float64
-	CorePressure    float64
-	ContainmentTemp float64
+	ReactionRate  float64
+	Steam         float64
+	Xenon         float64
+	CoreTemp      float64
+	CoreTempAlarm *ThresholdAlarm
 
-	CoreTempAlarm        *ThresholdAlarm
+	ContainmentTemp      float64
 	ContainmentTempAlarm *ThresholdAlarm
 
 	NeutronSource *NeutronSource
@@ -85,12 +84,15 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 		if err := cr.Simulate(quantum); err != nil {
 			return err
 		}
-		Transfer(&cr.Temp, &r.CoreTemp, quantum, r.ConductionRateMinuteOrDefault()/float64(len(r.ControlRods)))
-		TransferXenon(cr.Temp, &r.Xenon)
+		Transfer(&cr.Temp, &r.CoreTemp, quantum, r.ConductionRateMinuteOrDefault())
 	}
 	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
 
-	// create or destroy xenon
+	// create or remove xenon
+	r.createXenon(quantum)
+	r.burnXenon(quantum)
+
+	// create or remove steam
 
 	Transfer(&r.CoreTemp, &r.Turbine.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
 	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
@@ -121,6 +123,28 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 	}
 
 	return nil
+}
+
+func (r *Reactor) createXenon(quantum time.Duration) {
+	r.Xenon = r.Xenon + (r.ReactionRate * QuantumFraction(XenonProductionRate, quantum))
+	return
+}
+
+func (r *Reactor) burnXenon(quantum time.Duration) {
+	if r.CoreTemp < XenonThreshold {
+		return
+	}
+
+	r.Xenon = r.Xenon - ((r.CoreTemp - XenonThreshold) * QuantumFraction(XenonBurnRate, quantum))
+	return
+}
+
+func (r *Reactor) createSteam(quantum time.Duration) {
+	if r.CoreTemp < SteamThreshold {
+		return
+	}
+
+	return
 }
 
 //

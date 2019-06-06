@@ -14,11 +14,18 @@ const (
 )
 
 const (
-	// XenonFulcrum is the temperature at which xenon is burned off.
-	XenonFulcrum = 500.0
-	// XenonThreshold is the minimum threshold for where the reactor will create xenon.
-	XenonThreshold = 100.0
+	// XenonProductionRate is the amount of xenon created per unit of reaction rate.
+	XenonProductionRate = 0.5
+	// XenonThreshold is the point at which xemon starts to burn off.
+	// It is a core temperature.
+	XenonThreshold = 500
+	// XenonAbsorbtionRate is the amount of reactivity absorbed per
+	// unit of xenon.
+	XenonAbsorbtionRate = 10
+
 	// SteamThreshold is the temperature at which water turns to steam.
+	// If the core is above this threshold, the water in the core turns to steam.
+	// If the pump is active, that steam is replaced by water.
 	SteamThreshold = 100.0
 )
 

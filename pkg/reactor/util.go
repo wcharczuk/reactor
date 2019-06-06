@@ -177,3 +177,8 @@ func Below(max int) func(int) error {
 func ValidUint8(v int) error {
 	return Between(0, int(math.MaxUint8))(v)
 }
+
+// QuantumFraction applies a quantum fraction to a rate given in minutes.
+func QuantumFraction(rate float64, quantum time.Duration) float64 {
+	return rate * (float64(quantum) / float64(time.Minute))
+}
