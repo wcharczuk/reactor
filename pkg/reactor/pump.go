@@ -1,7 +1,6 @@
 package reactor
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -11,49 +10,33 @@ var (
 )
 
 // NewPump returns a new pump.
-func NewPump(cfg Config, name string) *Pump {
-	p := &Pump{
-		Component:  NewComponent(cfg),
-		Name:       name,
-		Throttle:   PositionMin,
-		InletTemp:  cfg.BaseTempOrDefault(),
-		OutletTemp: cfg.BaseTempOrDefault(),
+func NewPump(cfg Config) *Pump {
+	return &Pump{
+		Component: NewComponent(cfg),
+		Throttle:  PositionMin,
 	}
-	p.InletTempAlarm = NewThresholdAlarm(
-		fmt.Sprintf("%s Pump Inlet Temp", name),
-		&p.InletTemp,
-		SeverityThreshold(PumpInletFatal, PumpInletCritical, PumpInletWarning),
-	)
-	p.OutletTempAlarm = NewThresholdAlarm(
-		fmt.Sprintf("%s Pump Outlet Temp", name),
-		&p.OutletTemp,
-		SeverityThreshold(PumpOutletFatal, PumpOutletCritical, PumpOutletWarning),
-	)
-	return p
 }
 
 // Pump moves coolant around.
 type Pump struct {
 	*Component
+	Throttle Position
 
-	Name            string
-	Throttle        Position
-	InletTemp       float64
-	InletTempAlarm  *ThresholdAlarm
-	OutletTemp      float64
-	OutletTempAlarm *ThresholdAlarm
+	Inlet  chan *Water
+	Outlet chan *Water
 }
 
 // Alarms implements alarm provider.
 func (p *Pump) Alarms() []Alarm {
-	return []Alarm{
-		p.InletTempAlarm,
-		p.OutletTempAlarm,
-	}
+	return nil
 }
 
 // Simulate processes a simulation tick.
 func (p *Pump) Simulate(quantum time.Duration) error {
-	Transfer(&p.InletTemp, &p.OutletTemp, quantum, float64(p.Throttle)*p.PrimaryTransferRateMinuteOrDefault())
+	rate := float64(p.Throttle) * p.Config.PumpTransferRateMinuteOrDefault()
+	effectiveRate := QuantumFraction(rate, quantum)
+	for x := 0; x < int(effectiveRate); x++ {
+		p.Outlet <- <-p.Inlet
+	}
 	return nil
 }

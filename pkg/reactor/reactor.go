@@ -12,10 +12,8 @@ var (
 // NewReactor returns a new reactor.
 func NewReactor(cfg Config) *Reactor {
 	r := &Reactor{
-		NeutronSource:   NewNeutronSource(cfg),
 		Component:       NewComponent(cfg),
 		CoreTemp:        cfg.BaseTempOrDefault(),
-		Coolant:         FillWater(1024),
 		ContainmentTemp: cfg.BaseTempOrDefault(),
 		ControlRods: []*ControlRod{
 			NewControlRod(cfg, 0),
@@ -24,9 +22,15 @@ func NewReactor(cfg Config) *Reactor {
 			NewControlRod(cfg, 3),
 			NewControlRod(cfg, 4),
 		},
-		Primary: NewPump(cfg, "Primary"),
+		Coolant: FillWater(CoolantLoopVolume * 2),
+		Pump:    NewPump(cfg),
 		Turbine: NewTurbine(cfg),
 	}
+
+	r.Pump.Inlet = r.Coolant
+	r.Turbine.Inlet = r.Pump.Outlet
+	r.Turbine.Outlet = r.Evaporator.Inlet
+	r.Evaporator.Outlet = r.Coolant
 
 	r.ContainmentTempAlarm = NewThresholdAlarm(
 		"Containment Temp",
@@ -45,9 +49,11 @@ func NewReactor(cfg Config) *Reactor {
 type Reactor struct {
 	*Component
 
-	ReactionRate  float64
-	Water         float64
-	Steam         float64
+	ReactionRate float64
+
+	Water float64
+	Steam float64
+
 	Xenon         float64
 	CoreTemp      float64
 	CoreTempAlarm *ThresholdAlarm
@@ -57,10 +63,10 @@ type Reactor struct {
 
 	Coolant chan *Water
 
-	NeutronSource *NeutronSource
-	ControlRods   []*ControlRod
-	Primary       *Pump
-	Turbine       *Turbine
+	ControlRods []*ControlRod
+	Pump        *Pump
+	Turbine     *Turbine
+	Evaporator  *Evaporator
 }
 
 // Alarms fetches the current alarms.
@@ -86,19 +92,19 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 			return err
 		}
 	}
-	// we should have core reaction rate at this point.
 
 	// create or remove xenon
 	r.createXenon(quantum)
 	r.burnXenon(quantum)
 
-	// create or remove steam
+	// simulate moving water through the core.
 	if err := r.Primary.Simulate(quantum); err != nil {
 		return err
 	}
 	if err := r.Turbine.Simulate(quantum); err != nil {
 		return err
 	}
+
 	for _, alarm := range r.Alarms() {
 		if err := alarm.Simulate(quantum); err != nil {
 			return err
@@ -117,8 +123,7 @@ func (r *Reactor) burnXenon(quantum time.Duration) {
 	if r.CoreTemp < XenonThreshold {
 		return
 	}
-
-	r.Xenon = r.Xenon - ((r.CoreTemp - XenonThreshold) * QuantumFraction(XenonThreshold, quantum))
+	r.Xenon = r.Xenon - ((r.CoreTemp - XenonThreshold) * QuantumFraction(XenonBurnRateMinute, quantum))
 	return
 }
 

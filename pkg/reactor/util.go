@@ -182,3 +182,16 @@ func ValidUint8(v int) error {
 func QuantumFraction(rate float64, quantum time.Duration) float64 {
 	return rate * (float64(quantum) / float64(time.Minute))
 }
+
+// CoolantAverage averages the temperature values in a coolant flow.
+func CoolantAverage(pool chan *Water) float64 {
+	poolCount := len(pool)
+	var accum float64
+	var w *Water
+	for x := 0; x < poolCount; x++ {
+		w = <-pool
+		accum += w.Temp
+		pool <- w
+	}
+	return accum / float64(poolCount)
+}

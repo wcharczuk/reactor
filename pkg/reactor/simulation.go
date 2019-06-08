@@ -172,7 +172,7 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 				return err
 			}
 			label := "primary pump throttle"
-			current := &s.Reactor.Primary.Throttle
+			current := &s.Reactor.Pump.Throttle
 			desired := PositionFromControl(uint8(parsed))
 			input := NewPositionChange(label, current, desired, s.PumpThrottleAdjustmentOrDefault())
 

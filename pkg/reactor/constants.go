@@ -23,10 +23,16 @@ const (
 	// unit of xenon.
 	XenonAbsorbtionRate = 10
 
+	// XenonBurnRateMinute is the rate xenon burns off per unit temperature above a threshold.
+	XenonBurnRateMinute = 1024
+
 	// SteamThreshold is the temperature at which water turns to steam.
 	// If the core is above this threshold, the water in the core turns to steam.
 	// If the pump is active, that steam is replaced by water.
 	SteamThreshold = 100.0
+
+	// CoolantLoopVolume is the volume of a coolant loop section.
+	CoolantLoopVolume = 1024
 )
 
 // Alarm Thresholds

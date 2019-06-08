@@ -18,6 +18,5 @@ func NewWater() *Water {
 
 // Water is a unit of water.
 type Water struct {
-	Temp          float64
-	SteamFraction float64
+	Temp float64
 }

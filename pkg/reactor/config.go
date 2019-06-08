@@ -64,10 +64,8 @@ type Config struct {
 	// RadiantRateMinute is the transfer rate between unconneted components.
 	RadiantRateMinute float64 `yaml:"radiantRateMinute"`
 
-	// PrimaryTransferRateMinute is the btu capacity of the primary loop.
-	PrimaryTransferRateMinute float64 `yaml:"primaryTransferRateMinute"`
-	// SecondaryTransferRateMinute is the btu capacity of the secondary loop.
-	SecondaryTransferRateMinute float64 `yaml:"secondaryTransferRateMinute"`
+	// PumpTransferRateMinute is the btu capacity of the primary loop.
+	PumpTransferRateMinute float64 `yaml:"primaryTransferRateMinute"`
 
 	// ControlRodAdjustment is the time to go from 0-255 on a control rod.
 	ControlRodAdjustment time.Duration `yaml:"controlRodAdjustment"`
@@ -110,12 +108,9 @@ const (
 	DefaultControlRodAdjustment = 10 * time.Second
 	// DefaultPumpThrottleAdjustment is the default pump throttle adjustment rate.
 	DefaultPumpThrottleAdjustment = 5 * time.Second
-	// DefaultPrimaryTransferRateMinute is the default primary heat transfer.
+	// DefaultPumpTransferRateMinute is the default primary heat transfer.
 	// The throttle * this is how much heat we can move from the inlet to the outlet per minute.
-	DefaultPrimaryTransferRateMinute = 4096
-	// DefaultSecondaryTransferRateMinute is the default secondary heat transfer.
-	// The throttle * this is how much heat we can move from the inlet to the outlet per minute.k
-	DefaultSecondaryTransferRateMinute = 4096
+	DefaultPumpTransferRateMinute = 4096
 )
 
 // TickIntervalOrDefault returns the tick interval or a default.
@@ -214,20 +209,12 @@ func (c Config) RadiantRateMinuteOrDefault() float64 {
 	return DefaultRadiantRateMinute
 }
 
-// PrimaryTransferRateMinuteOrDefault returns a value or a default
-func (c Config) PrimaryTransferRateMinuteOrDefault() float64 {
-	if c.PrimaryTransferRateMinute > 0 {
-		return c.PrimaryTransferRateMinute
+// PumpTransferRateMinuteOrDefault returns a value or a default
+func (c Config) PumpTransferRateMinuteOrDefault() float64 {
+	if c.PumpTransferRateMinute > 0 {
+		return c.PumpTransferRateMinute
 	}
-	return DefaultPrimaryTransferRateMinute
-}
-
-// SecondaryTransferRateMinuteOrDefault returns a value or a default
-func (c Config) SecondaryTransferRateMinuteOrDefault() float64 {
-	if c.SecondaryTransferRateMinute > 0 {
-		return c.SecondaryTransferRateMinute
-	}
-	return DefaultSecondaryTransferRateMinute
+	return DefaultPumpTransferRateMinute
 }
 
 // ControlRodAdjustmentOrDefault returns a value or a default
