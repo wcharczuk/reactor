@@ -46,6 +46,7 @@ type Reactor struct {
 	*Component
 
 	ReactionRate  float64
+	Water         float64
 	Steam         float64
 	Xenon         float64
 	CoreTemp      float64

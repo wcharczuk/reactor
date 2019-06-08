@@ -98,9 +98,8 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			lines := []string{
 				"command list:",
 				"> help | ? : this message",
-				"> cr ([0-9],*) [0-255] : set control rod position (by index, or * for all)",
-				"> pp [0-255] : primary pump throttle",
-				"> sp [0-255] : secondary pump throttle",
+				"> cr ([0-9],*) [0-255] (duration?) : set control rod position (by index, or * for all)",
+				"> p [0-255] (duration?) : primary pump throttle",
 				"> notice <args>: display a notice",
 				"> alert <args>: display an alert",
 				"> message <args>: log a message",
