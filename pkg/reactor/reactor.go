@@ -15,6 +15,7 @@ func NewReactor(cfg Config) *Reactor {
 		NeutronSource:   NewNeutronSource(cfg),
 		Component:       NewComponent(cfg),
 		CoreTemp:        cfg.BaseTempOrDefault(),
+		Coolant:         FillWater(1024),
 		ContainmentTemp: cfg.BaseTempOrDefault(),
 		ControlRods: []*ControlRod{
 			NewControlRod(cfg, 0),
@@ -23,9 +24,8 @@ func NewReactor(cfg Config) *Reactor {
 			NewControlRod(cfg, 3),
 			NewControlRod(cfg, 4),
 		},
-		Primary:   NewPump(cfg, "Primary"),
-		Secondary: NewPump(cfg, "Secondary"),
-		Turbine:   NewTurbine(cfg),
+		Primary: NewPump(cfg, "Primary"),
+		Turbine: NewTurbine(cfg),
 	}
 
 	r.ContainmentTempAlarm = NewThresholdAlarm(
@@ -54,10 +54,11 @@ type Reactor struct {
 	ContainmentTemp      float64
 	ContainmentTempAlarm *ThresholdAlarm
 
+	Coolant chan *Water
+
 	NeutronSource *NeutronSource
 	ControlRods   []*ControlRod
 	Primary       *Pump
-	Secondary     *Pump
 	Turbine       *Turbine
 }
 
@@ -71,7 +72,6 @@ func (r *Reactor) Alarms() []Alarm {
 		alarms = append(alarms, cr.Alarms()...)
 	}
 	alarms = append(alarms, r.Primary.Alarms()...)
-	alarms = append(alarms, r.Secondary.Alarms()...)
 	alarms = append(alarms, r.Turbine.Alarms()...)
 	return alarms
 }
@@ -84,38 +84,20 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 		if err := cr.Simulate(quantum); err != nil {
 			return err
 		}
-		Transfer(&cr.Temp, &r.CoreTemp, quantum, r.ConductionRateMinuteOrDefault())
 	}
-	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
+	// we should have core reaction rate at this point.
 
 	// create or remove xenon
 	r.createXenon(quantum)
 	r.burnXenon(quantum)
 
 	// create or remove steam
-
-	Transfer(&r.CoreTemp, &r.Turbine.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
-	Transfer(&r.CoreTemp, &r.Primary.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
-	Transfer(&r.CoreTemp, &r.Primary.OutletTemp, quantum, r.RadiantRateMinuteOrDefault())
-	Transfer(&r.CoreTemp, &r.Secondary.InletTemp, quantum, r.RadiantRateMinuteOrDefault())
-	Transfer(&r.CoreTemp, &r.Secondary.OutletTemp, quantum, r.RadiantRateMinuteOrDefault())
-
 	if err := r.Primary.Simulate(quantum); err != nil {
 		return err
 	}
-	Transfer(&r.Primary.OutletTemp, &r.Secondary.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
-	if err := r.Secondary.Simulate(quantum); err != nil {
-		return err
-	}
-	Transfer(&r.Secondary.OutletTemp, &r.Turbine.InletTemp, quantum, r.ConductionRateMinuteOrDefault())
-	Transfer(&r.Turbine.InletTemp, r.baseTemp(), quantum, r.ConductionRateMinuteOrDefault())
 	if err := r.Turbine.Simulate(quantum); err != nil {
 		return err
 	}
-
-	Transfer(&r.CoreTemp, &r.ContainmentTemp, quantum, r.ConvectionRateMinuteOrDefault())
-	Transfer(&r.ContainmentTemp, r.baseTemp(), quantum, r.RadiantRateMinuteOrDefault())
-
 	for _, alarm := range r.Alarms() {
 		if err := alarm.Simulate(quantum); err != nil {
 			return err
@@ -135,7 +117,7 @@ func (r *Reactor) burnXenon(quantum time.Duration) {
 		return
 	}
 
-	r.Xenon = r.Xenon - ((r.CoreTemp - XenonThreshold) * QuantumFraction(XenonBurnRate, quantum))
+	r.Xenon = r.Xenon - ((r.CoreTemp - XenonThreshold) * QuantumFraction(XenonThreshold, quantum))
 	return
 }
 

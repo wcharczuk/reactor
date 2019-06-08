@@ -163,7 +163,7 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			s.Message(input)
 			s.Inputs <- input
 		}
-	case "pp":
+	case "p":
 		{
 			if len(args) < 1 {
 				return fmt.Errorf("invalid `p` args; must provide amount (0-255)")
@@ -177,23 +177,6 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			desired := PositionFromControl(uint8(parsed))
 			input := NewPositionChange(label, current, desired, s.PumpThrottleAdjustmentOrDefault())
 
-			s.Message(input)
-			s.Inputs <- input
-		}
-	case "sp":
-		{
-			if len(args) < 1 {
-				return fmt.Errorf("invalid `sp` args; must provide amount (0-255)")
-			}
-			parsed, err := ParseValue(ValidUint8, args[0])
-			if err != nil {
-				return err
-			}
-			label := "secondary pump throttle"
-			current := &s.Reactor.Secondary.Throttle
-			desired := PositionFromControl(uint8(parsed))
-
-			input := NewPositionChange(label, current, desired, s.PumpThrottleAdjustmentOrDefault())
 			s.Message(input)
 			s.Inputs <- input
 		}
