@@ -13,6 +13,7 @@ var (
 func NewTurbine(cfg Config) *Turbine {
 	t := &Turbine{
 		Component: NewComponent(cfg),
+		Coolant:   NewCoolant(),
 	}
 	t.SpeedRPMAlarm = NewThresholdAlarm(
 		"Turbine",
@@ -31,8 +32,7 @@ type Turbine struct {
 	SpeedRPM      float64
 	SpeedRPMAlarm *ThresholdAlarm
 
-	Inlet  chan *Water
-	Outlet chan *Water
+	Coolant *Coolant
 }
 
 // Alarms implements alarmable.
@@ -44,7 +44,7 @@ func (t *Turbine) Alarms() []Alarm {
 
 // Simulate is the power output of the turbine.
 func (t *Turbine) Simulate(quantum time.Duration) error {
-	delta := CoolantAverage(t.Inlet) - t.BaseTempOrDefault()
+	delta := CoolantAverage(t.Coolant.Water) - t.BaseTempOrDefault()
 	rate := (float64(quantum) / float64(time.Minute))
 	accel := rate * t.TurbineThermalRateMinuteOrDefault() * delta
 	deccel := rate * t.TurbineDragOrDefault() * t.SpeedRPM

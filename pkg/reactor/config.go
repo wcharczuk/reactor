@@ -12,6 +12,9 @@ var DefaultConfig = Config{
 			"sp 255",
 			"notice scram initiated",
 		},
+		"az5": []string{
+			"script scram",
+		},
 		"base": []string{
 			"cr * 135",
 			"pp 255",

@@ -5,7 +5,7 @@ import (
 )
 
 // Transfer moves quantity from one value to another given a rate and quantum.
-func Transfer(from, to *float64, quantum time.Duration, rate float64) {
+func Transfer(from, to *float64, rate float64, quantum time.Duration) {
 	quantumFraction := float64(quantum) / float64(time.Minute)
 	effectiveRate := rate * quantumFraction
 	delta := (*from - *to)

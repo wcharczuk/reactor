@@ -15,7 +15,7 @@ func TestTransfer(t *testing.T) {
 	quantum := 500 * time.Millisecond
 	rate := 1000.0
 
-	Transfer(&from, &to, quantum, rate)
+	Transfer(&from, &to, rate, quantum)
 	assert.Equal(55, from)
 	assert.Equal(55, to)
 }

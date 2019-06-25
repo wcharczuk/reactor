@@ -22,15 +22,17 @@ func NewReactor(cfg Config) *Reactor {
 			NewControlRod(cfg, 3),
 			NewControlRod(cfg, 4),
 		},
-		Coolant: FillWater(CoolantLoopVolume * 2),
-		Pump:    NewPump(cfg),
+		Coolant:   NewCoolant(),
+		Primary:   NewPump(cfg),
+		Secondary: NewPump(cfg),
+
 		Turbine: NewTurbine(cfg),
 	}
 
-	r.Pump.Inlet = r.Coolant
-	r.Turbine.Inlet = r.Pump.Outlet
-	r.Turbine.Outlet = r.Evaporator.Inlet
-	r.Evaporator.Outlet = r.Coolant
+	r.Primary.Inlet = r.Coolant
+	r.Primary.Outlet = r.Turbine.Coolant
+	r.Secondary.Inlet = r.Turbine.Coolant
+	r.Secondary.Outlet = r.Coolant
 
 	r.ContainmentTempAlarm = NewThresholdAlarm(
 		"Containment Temp",
@@ -61,10 +63,11 @@ type Reactor struct {
 	ContainmentTemp      float64
 	ContainmentTempAlarm *ThresholdAlarm
 
-	Coolant chan *Water
+	Coolant *Coolant
 
 	ControlRods []*ControlRod
-	Pump        *Pump
+	Primary     *Pump
+	Secondary   *Pump
 	Turbine     *Turbine
 	Evaporator  *Evaporator
 }
@@ -80,12 +83,12 @@ func (r *Reactor) Alarms() []Alarm {
 	}
 	alarms = append(alarms, r.Primary.Alarms()...)
 	alarms = append(alarms, r.Turbine.Alarms()...)
+	alarms = append(alarms, r.Secondary.Alarms()...)
 	return alarms
 }
 
 // Simulate advances the simulation by the quantum.
 func (r *Reactor) Simulate(quantum time.Duration) error {
-
 	// create core heat
 	for _, cr := range r.ControlRods {
 		if err := cr.Simulate(quantum); err != nil {
@@ -102,6 +105,9 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 		return err
 	}
 	if err := r.Turbine.Simulate(quantum); err != nil {
+		return err
+	}
+	if err := r.Secondary.Simulate(quantum); err != nil {
 		return err
 	}
 

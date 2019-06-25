@@ -22,8 +22,8 @@ type Pump struct {
 	*Component
 	Throttle Position
 
-	Inlet  chan *Water
-	Outlet chan *Water
+	Inlet  *Coolant
+	Outlet *Coolant
 }
 
 // Alarms implements alarm provider.
@@ -35,8 +35,6 @@ func (p *Pump) Alarms() []Alarm {
 func (p *Pump) Simulate(quantum time.Duration) error {
 	rate := float64(p.Throttle) * p.Config.PumpTransferRateMinuteOrDefault()
 	effectiveRate := QuantumFraction(rate, quantum)
-	for x := 0; x < int(effectiveRate); x++ {
-		p.Outlet <- <-p.Inlet
-	}
+	p.Outlet.Push(p.Inlet.Pull(int(effectiveRate))...)
 	return nil
 }

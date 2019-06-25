@@ -195,3 +195,16 @@ func CoolantAverage(pool chan *Water) float64 {
 	}
 	return accum / float64(poolCount)
 }
+
+// CoolantHeatTransfer transfers heat from a source into the pool given as a chanel of water.
+func CoolantHeatTransfer(pool chan *Water, sourceTemp *float64, rate float64, quantum time.Duration) {
+	poolCount := len(pool)
+	effectiveRate := rate / float64(poolCount)
+
+	var w *Water
+	for x := 0; x < poolCount; x++ {
+		w = <-pool
+		Transfer(sourceTemp, &w.Temp, effectiveRate, quantum)
+		pool <- w
+	}
+}

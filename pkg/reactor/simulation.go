@@ -99,7 +99,8 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 				"command list:",
 				"> help | ? : this message",
 				"> cr ([0-9],*) [0-255] (duration?) : set control rod position (by index, or * for all)",
-				"> p [0-255] (duration?) : primary pump throttle",
+				"> pp [0-255] (duration?) : primary pump throttle",
+				"> sp [0-255] (duration?) : secondary pump throttle",
 				"> notice <args>: display a notice",
 				"> alert <args>: display an alert",
 				"> message <args>: log a message",
@@ -162,17 +163,34 @@ func (s *Simulation) ProcessCommand(rawCommand string) error {
 			s.Message(input)
 			s.Inputs <- input
 		}
-	case "p":
+	case "pp":
 		{
 			if len(args) < 1 {
-				return fmt.Errorf("invalid `p` args; must provide amount (0-255)")
+				return fmt.Errorf("invalid `pp` args; must provide amount (0-255)")
 			}
 			parsed, err := ParseValue(ValidUint8, args[0])
 			if err != nil {
 				return err
 			}
 			label := "primary pump throttle"
-			current := &s.Reactor.Pump.Throttle
+			current := &s.Reactor.Primary.Throttle
+			desired := PositionFromControl(uint8(parsed))
+			input := NewPositionChange(label, current, desired, s.PumpThrottleAdjustmentOrDefault())
+
+			s.Message(input)
+			s.Inputs <- input
+		}
+	case "sp":
+		{
+			if len(args) < 1 {
+				return fmt.Errorf("invalid `sp` args; must provide amount (0-255)")
+			}
+			parsed, err := ParseValue(ValidUint8, args[0])
+			if err != nil {
+				return err
+			}
+			label := "secondary pump throttle"
+			current := &s.Reactor.Secondary.Throttle
 			desired := PositionFromControl(uint8(parsed))
 			input := NewPositionChange(label, current, desired, s.PumpThrottleAdjustmentOrDefault())
 
