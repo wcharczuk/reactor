@@ -16,7 +16,7 @@ func NewControlRod(cfg Config, index int) *ControlRod {
 
 	cr.TempAlarm = NewThresholdAlarm(
 		fmt.Sprintf("Control Rod %d temp", index),
-		&cr.Temp,
+		func() float64 { return cr.Temp },
 		SeverityThreshold(ControlRodTempFatal, ControlRodTempCritical, ControlRodTempWarning),
 	)
 	return cr

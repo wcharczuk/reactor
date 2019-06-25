@@ -7,10 +7,10 @@ var (
 )
 
 // NewThresholdAlarm returns a new threshold alarm.
-func NewThresholdAlarm(name string, value *float64, severityProvider func(float64) Severity) *ThresholdAlarm {
+func NewThresholdAlarm(name string, valueProvider func() float64, severityProvider func(float64) Severity) *ThresholdAlarm {
 	ta := &ThresholdAlarm{
 		Name:             name,
-		Value:            value,
+		ValueProvider:    valueProvider,
 		SeverityProvider: severityProvider,
 	}
 	ta.SeverityObserver = NewSeverityObserver(ta.Severity)
@@ -23,13 +23,13 @@ type ThresholdAlarm struct {
 
 	Name             string
 	MessageFormat    string
-	Value            *float64
+	ValueProvider    func() float64
 	SeverityProvider func(float64) Severity
 }
 
 // Severity returns the alarm severity.
 func (ta *ThresholdAlarm) Severity() Severity {
-	return ta.SeverityProvider(*ta.Value)
+	return ta.SeverityProvider(ta.ValueProvider())
 }
 
 // String implements fmt.Stringer.

@@ -17,7 +17,7 @@ func NewTurbine(cfg Config) *Turbine {
 	}
 	t.SpeedRPMAlarm = NewThresholdAlarm(
 		"Turbine",
-		&t.SpeedRPM,
+		func() float64 { return t.SpeedRPM },
 		SeverityThreshold(TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning),
 	)
 	return t
@@ -26,13 +26,10 @@ func NewTurbine(cfg Config) *Turbine {
 // Turbine generates power based on fan rpm.
 type Turbine struct {
 	*Component
-
-	Output float64
-
+	Output        float64
 	SpeedRPM      float64
 	SpeedRPMAlarm *ThresholdAlarm
-
-	Coolant *Coolant
+	Coolant       *Coolant
 }
 
 // Alarms implements alarmable.

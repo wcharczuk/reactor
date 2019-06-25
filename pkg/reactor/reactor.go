@@ -36,12 +36,12 @@ func NewReactor(cfg Config) *Reactor {
 
 	r.ContainmentTempAlarm = NewThresholdAlarm(
 		"Containment Temp",
-		&r.ContainmentTemp,
+		func() float64 { return r.ContainmentTemp },
 		SeverityThreshold(ContainmentTempFatal, ContainmentTempCritical, ContainmentTempWarning),
 	)
 	r.CoreTempAlarm = NewThresholdAlarm(
 		"Core Temp",
-		&r.CoreTemp,
+		func() float64 { return r.CoreTemp },
 		SeverityThreshold(CoreTempFatal, CoreTempCritical, CoreTempWarning),
 	)
 	return r
@@ -89,18 +89,17 @@ func (r *Reactor) Alarms() []Alarm {
 
 // Simulate advances the simulation by the quantum.
 func (r *Reactor) Simulate(quantum time.Duration) error {
+	// create or remove xenon
+	r.xenon(quantum)
+	r.reactivity(quantum)
+	r.steam(quantum)
+
 	// create core heat
 	for _, cr := range r.ControlRods {
 		if err := cr.Simulate(quantum); err != nil {
 			return err
 		}
 	}
-
-	// create or remove xenon
-	r.createXenon(quantum)
-	r.burnXenon(quantum)
-
-	// simulate moving water through the core.
 	if err := r.Primary.Simulate(quantum); err != nil {
 		return err
 	}
@@ -110,7 +109,6 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 	if err := r.Secondary.Simulate(quantum); err != nil {
 		return err
 	}
-
 	for _, alarm := range r.Alarms() {
 		if err := alarm.Simulate(quantum); err != nil {
 			return err
@@ -120,24 +118,25 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 	return nil
 }
 
-func (r *Reactor) createXenon(quantum time.Duration) {
-	r.Xenon = r.Xenon + (r.ReactionRate * QuantumFraction(XenonProductionRate, quantum))
-	return
+func (r *Reactor) reactivity(quantum time.Duration) {
+
 }
 
-func (r *Reactor) burnXenon(quantum time.Duration) {
+func (r *Reactor) xenon(quantum time.Duration) {
+	r.Xenon = r.Xenon + (r.ReactionRate * QuantumFraction(XenonProductionRate, quantum))
+
 	if r.CoreTemp < XenonThreshold {
 		return
 	}
+
 	r.Xenon = r.Xenon - ((r.CoreTemp - XenonThreshold) * QuantumFraction(XenonBurnRateMinute, quantum))
 	return
 }
 
-func (r *Reactor) createSteam(quantum time.Duration) {
+func (r *Reactor) steam(quantum time.Duration) {
 	if r.CoreTemp < SteamThreshold {
 		return
 	}
-
 	return
 }
 
