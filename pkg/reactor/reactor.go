@@ -89,7 +89,6 @@ func (r *Reactor) Alarms() []Alarm {
 
 // Simulate advances the simulation by the quantum.
 func (r *Reactor) Simulate(quantum time.Duration) error {
-	// create or remove xenon
 	r.xenon(quantum)
 	r.reactivity(quantum)
 	r.steam(quantum)
