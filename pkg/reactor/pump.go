@@ -1,6 +1,7 @@
 package reactor
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -11,10 +12,23 @@ var (
 
 // NewPump returns a new pump.
 func NewPump(cfg Config) *Pump {
-	return &Pump{
+	p := &Pump{
 		Component: NewComponent(cfg),
 		Throttle:  PositionMin,
 	}
+
+	p.InletTempAlarm = NewThresholdAlarm(
+		fmt.Sprintf("%s Pump Inlet Temp", name),
+		&p.InletTemp,
+		SeverityThreshold(PumpInletFatal, PumpInletCritical, PumpInletWarning),
+	)
+	p.OutletTempAlarm = NewThresholdAlarm(
+		fmt.Sprintf("%s Pump Outlet Temp", name),
+		&p.OutletTemp,
+		SeverityThreshold(PumpOutletFatal, PumpOutletCritical, PumpOutletWarning),
+	)
+
+	return p
 }
 
 // Pump moves coolant around.
@@ -22,8 +36,10 @@ type Pump struct {
 	*Component
 	Throttle Position
 
-	Inlet  *Coolant
-	Outlet *Coolant
+	Inlet           *Coolant
+	InletTempAlarm  *ThresholdAlarm
+	Outlet          *Coolant
+	OutletTempAlarm *ThresholdAlarm
 }
 
 // Alarms implements alarm provider.
