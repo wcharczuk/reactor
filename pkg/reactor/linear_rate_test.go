@@ -7,11 +7,11 @@ import (
 	"github.com/blend/go-sdk/assert"
 )
 
-func TestLinearChange(t *testing.T) {
+func TestLinear(t *testing.T) {
 	assert := assert.New(t)
 
 	var position Position = 1.0
-	rate := NewLinearChange(float64(position), 0.5, 5*time.Second)
+	rate := NewLinearRate(float64(position), 0.5, 5*time.Second)
 	assert.False(rate.IsAdditive())
 
 	rate.Affect(&position, 2500*time.Millisecond)
@@ -21,10 +21,10 @@ func TestLinearChange(t *testing.T) {
 	assert.Equal(0.5, position)
 }
 
-func TestLinearChangeZeroDelta(t *testing.T) {
+func TestLinearZeroDelta(t *testing.T) {
 	assert := assert.New(t)
 
 	var position Position = 0.5
-	rate := NewLinearChange(float64(position), 0.5, 5*time.Second)
+	rate := NewLinearRate(float64(position), 0.5, 5*time.Second)
 	assert.False(rate.IsAdditive())
 }

@@ -41,10 +41,10 @@ func (t *Turbine) Alarms() []Alarm {
 
 // Simulate is the power output of the turbine.
 func (t *Turbine) Simulate(quantum time.Duration) error {
-	delta := CoolantAverage(t.Coolant.Water) - t.BaseTempOrDefault()
+	delta := CoolantAverage(t.Coolant.Water) - t.Config.BaseTempOrDefault()
 	rate := (float64(quantum) / float64(time.Minute))
-	accel := rate * t.TurbineThermalRateMinuteOrDefault() * delta
-	deccel := rate * t.TurbineDragOrDefault() * t.SpeedRPM
+	accel := rate * t.Config.TurbineThermalRateMinuteOrDefault() * delta
+	deccel := rate * t.Config.TurbineDragOrDefault() * t.SpeedRPM
 
 	t.SpeedRPM = t.SpeedRPM + (accel / 2.0)
 	t.SpeedRPM = t.SpeedRPM - deccel
@@ -53,6 +53,6 @@ func (t *Turbine) Simulate(quantum time.Duration) error {
 		t.SpeedRPM = 0
 	}
 
-	t.Output = t.SpeedRPM * t.TurbineOutputRateMinuteOrDefault()
+	t.Output = t.SpeedRPM * t.Config.TurbineOutputRateMinuteOrDefault()
 	return nil
 }

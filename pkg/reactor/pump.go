@@ -44,7 +44,10 @@ type Pump struct {
 
 // Alarms implements alarm provider.
 func (p *Pump) Alarms() []Alarm {
-	return nil
+	return []Alarm{
+		p.InletTempAlarm,
+		p.OutletTempAlarm,
+	}
 }
 
 // Simulate processes a simulation tick.

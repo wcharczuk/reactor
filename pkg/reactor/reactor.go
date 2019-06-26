@@ -60,7 +60,6 @@ type Reactor struct {
 	Primary     *Pump
 	Secondary   *Pump
 	Turbine     *Turbine
-	Evaporator  *Evaporator
 }
 
 // Alarms fetches the current alarms.

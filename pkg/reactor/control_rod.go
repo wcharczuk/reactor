@@ -55,12 +55,12 @@ func (cr *ControlRod) Simulate(quantum time.Duration) error {
 }
 
 func (cr *ControlRod) temperature(quantum time.Duration) {
-	rate := QuantumFraction(float64(PositionMax-cr.Position)*cr.FissionRateMinuteOrDefault(), quantum)
+	rate := QuantumFraction(float64(PositionMax-cr.Position)*cr.Config.FissionRateMinuteOrDefault(), quantum)
 	cr.Temp = cr.Temp + rate
 }
 
 func (cr *ControlRod) reactivity(quantum time.Duration) {
-	rate := QuantumFraction(float64(PositionMax-cr.Position)*cr.FissionRateMinuteOrDefault(), quantum)
+	rate := QuantumFraction(float64(PositionMax-cr.Position)*cr.Config.FissionRateMinuteOrDefault(), quantum)
 	cr.Reactivity = cr.Reactivity + rate
 }
 

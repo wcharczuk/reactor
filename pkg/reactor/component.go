@@ -11,8 +11,7 @@ func NewComponent(cfg Config) *Component {
 
 // Component is the base component type.
 type Component struct {
-	Config
-
+	Config             Config
 	failureProbability func() float64
 	failed             bool
 }

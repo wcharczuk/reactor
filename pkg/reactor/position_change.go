@@ -14,7 +14,7 @@ func NewPositionChange(label string, position *Position, desired Position, quant
 		Label:    label,
 		Original: *position,
 		Desired:  desired,
-		Rate:     NewLinearChange(from, to, RelativeQuantum(from, to, 1.0, quantum)),
+		Rate:     NewLinearRate(from, to, RelativeQuantum(from, to, 1.0, quantum)),
 	}
 }
 
@@ -24,7 +24,7 @@ type PositionChange struct {
 	Label    string
 	Desired  Position
 	Original Position
-	Rate     LinearChange
+	Rate     PositionChangeRate
 }
 
 // String implements fmt.Stringer.
