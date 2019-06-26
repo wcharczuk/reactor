@@ -23,10 +23,9 @@ func NewReactor(cfg Config) *Reactor {
 			NewControlRod(cfg, 4),
 		},
 		Coolant:   NewCoolant(),
-		Primary:   NewPump(cfg),
-		Secondary: NewPump(cfg),
-
-		Turbine: NewTurbine(cfg),
+		Primary:   NewPump("primary", cfg),
+		Secondary: NewPump("secondary", cfg),
+		Turbine:   NewTurbine(cfg),
 	}
 
 	r.Primary.Inlet = r.Coolant
@@ -51,19 +50,11 @@ func NewReactor(cfg Config) *Reactor {
 type Reactor struct {
 	*Component
 
-	ReactionRate float64
-
-	Water float64
-	Steam float64
-
-	Xenon         float64
-	CoreTemp      float64
-	CoreTempAlarm *ThresholdAlarm
-
+	CoreTemp             float64
+	CoreTempAlarm        *ThresholdAlarm
 	ContainmentTemp      float64
 	ContainmentTempAlarm *ThresholdAlarm
-
-	Coolant *Coolant
+	Coolant              *Coolant
 
 	ControlRods []*ControlRod
 	Primary     *Pump
@@ -89,10 +80,6 @@ func (r *Reactor) Alarms() []Alarm {
 
 // Simulate advances the simulation by the quantum.
 func (r *Reactor) Simulate(quantum time.Duration) error {
-	r.xenon(quantum)
-	r.reactivity(quantum)
-	r.steam(quantum)
-
 	// create core heat
 	for _, cr := range r.ControlRods {
 		if err := cr.Simulate(quantum); err != nil {
@@ -115,35 +102,4 @@ func (r *Reactor) Simulate(quantum time.Duration) error {
 	}
 
 	return nil
-}
-
-func (r *Reactor) reactivity(quantum time.Duration) {
-
-}
-
-func (r *Reactor) xenon(quantum time.Duration) {
-	r.Xenon = r.Xenon + (r.ReactionRate * QuantumFraction(XenonProductionRate, quantum))
-
-	if r.CoreTemp < XenonThreshold {
-		return
-	}
-
-	r.Xenon = r.Xenon - ((r.CoreTemp - XenonThreshold) * QuantumFraction(XenonBurnRateMinute, quantum))
-	return
-}
-
-func (r *Reactor) steam(quantum time.Duration) {
-	if r.CoreTemp < SteamThreshold {
-		return
-	}
-	return
-}
-
-//
-// utility functions
-//
-
-func (r *Reactor) baseTemp() *float64 {
-	base := r.BaseTempOrDefault()
-	return &base
 }

@@ -11,7 +11,7 @@ var (
 )
 
 // NewPump returns a new pump.
-func NewPump(cfg Config) *Pump {
+func NewPump(name string, cfg Config) *Pump {
 	p := &Pump{
 		Component: NewComponent(cfg),
 		Throttle:  PositionMin,
@@ -19,12 +19,12 @@ func NewPump(cfg Config) *Pump {
 
 	p.InletTempAlarm = NewThresholdAlarm(
 		fmt.Sprintf("%s Pump Inlet Temp", name),
-		&p.InletTemp,
+		func() float64 { return CoolantAverage(p.Inlet.Water) },
 		SeverityThreshold(PumpInletFatal, PumpInletCritical, PumpInletWarning),
 	)
 	p.OutletTempAlarm = NewThresholdAlarm(
 		fmt.Sprintf("%s Pump Outlet Temp", name),
-		&p.OutletTemp,
+		func() float64 { return CoolantAverage(p.Outlet.Water) },
 		SeverityThreshold(PumpOutletFatal, PumpOutletCritical, PumpOutletWarning),
 	)
 

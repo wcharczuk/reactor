@@ -29,6 +29,10 @@ func NewControlRod(cfg Config, index int) *ControlRod {
 type ControlRod struct {
 	*Component
 
+	Reactivity float64
+	Steam      float64
+	Xenon      float64
+
 	Index    int
 	Position Position
 
@@ -43,8 +47,35 @@ func (cr *ControlRod) Alarms() []Alarm {
 
 // Simulate applies a simulation tick.
 func (cr *ControlRod) Simulate(quantum time.Duration) error {
-	// update the temperatures
-	rate := float64(PositionMax-cr.Position) * cr.FissionRateMinuteOrDefault() * (float64(quantum) / float64(time.Minute))
-	cr.Temp = cr.Temp + rate
+	cr.temperature(quantum)
+	cr.xenon(quantum)
+	cr.steam(quantum)
+	cr.reactivity(quantum)
 	return nil
+}
+
+func (cr *ControlRod) temperature(quantum time.Duration) {
+	rate := QuantumFraction(float64(PositionMax-cr.Position)*cr.FissionRateMinuteOrDefault(), quantum)
+	cr.Temp = cr.Temp + rate
+}
+
+func (cr *ControlRod) reactivity(quantum time.Duration) {
+	rate := QuantumFraction(float64(PositionMax-cr.Position)*cr.FissionRateMinuteOrDefault(), quantum)
+	cr.Reactivity = cr.Reactivity + rate
+}
+
+func (cr *ControlRod) xenon(quantum time.Duration) {
+	cr.Xenon = cr.Xenon + (cr.Reactivity * QuantumFraction(XenonProductionRate, quantum))
+	if cr.Temp < XenonThreshold {
+		return
+	}
+	cr.Xenon = cr.Xenon - ((cr.Temp - XenonThreshold) * QuantumFraction(XenonBurnRateMinute, quantum))
+	return
+}
+
+func (cr *ControlRod) steam(quantum time.Duration) {
+	if cr.Temp < SteamThreshold {
+		return
+	}
+	return
 }
