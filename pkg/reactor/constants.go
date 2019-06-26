@@ -53,6 +53,10 @@ const (
 	PumpOutletCritical = 1500.0
 	PumpOutletFatal    = 3000.0
 
+	TurbineCoolantWarning  = 750.0
+	TurbineCoolantCritical = 1500.0
+	TurbineCoolantFatal    = 3000.0
+
 	TurbineRPMWarning  = 5000.0
 	TurbineRPMCritical = 6000.0
 	TurbineRPMFatal    = 8000.0

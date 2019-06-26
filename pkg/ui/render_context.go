@@ -152,7 +152,7 @@ func (rc *RenderContext) Render() func() error {
 		rc.Controls = append(rc.Controls, header)
 
 		messageList := widgets.NewParagraph()
-		messageList.Title = "Log"
+		messageList.Title = "SKALA"
 		messageList.SetRect(r(totalWidth-messageListWidth, 0, messageListWidth, totalHeight))
 		rc.Controls = append(rc.Controls, messageList)
 
@@ -181,24 +181,24 @@ func (rc *RenderContext) Render() func() error {
 		output.SetRect(r(gaugeWidth+controlRodTempWidth, h(header), middleWidth, 3))
 		rc.Controls = append(rc.Controls, output)
 
-		turbineInletTemp := widgets.NewParagraph()
-		turbineInletTemp.Title = "Turb. Temp"
-		turbineInletTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output), middleWidth2, 3))
-		rc.Controls = append(rc.Controls, turbineInletTemp)
+		turbineCoolantTemp := widgets.NewParagraph()
+		turbineCoolantTemp.Title = "Turb. Temp"
+		turbineCoolantTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output), middleWidth2, 3))
+		rc.Controls = append(rc.Controls, turbineCoolantTemp)
 
 		turbineSpeed := widgets.NewParagraph()
 		turbineSpeed.Title = "Turbine RPM"
-		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineInletTemp), h(header)+h(output), middleWidth2+1, 3))
+		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineCoolantTemp), h(header)+h(output), middleWidth2+1, 3))
 		rc.Controls = append(rc.Controls, turbineSpeed)
 
 		coreTemp := widgets.NewParagraph()
 		coreTemp.Title = "Core Temp"
-		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output)+h(turbineInletTemp), middleWidth2, 3))
+		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output)+h(turbineCoolantTemp), middleWidth2, 3))
 		rc.Controls = append(rc.Controls, coreTemp)
 
 		containmentTemp := widgets.NewParagraph()
 		containmentTemp.Title = "Cont. Temp"
-		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), h(header)+h(output)+h(turbineInletTemp), middleWidth2+1, 3))
+		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), h(header)+h(output)+h(turbineCoolantTemp), middleWidth2+1, 3))
 		rc.Controls = append(rc.Controls, containmentTemp)
 
 		primaryPump := widgets.NewGauge()
@@ -270,22 +270,22 @@ func (rc *RenderContext) Render() func() error {
 			containmentTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.ContainmentTemp)
 			containmentTemp.TextStyle.Bg, containmentTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.ContainmentTempAlarm.Severity())
 
-			turbineInletTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.Turbine.InletTemp)
-			turbineInletTemp.TextStyle.Bg, turbineInletTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.Turbine.InletTempAlarm.Severity())
+			turbineCoolantTemp.Text = fmt.Sprintf("%.2fc", reactor.CoolantAverage(rc.Simulation.Reactor.Turbine.Coolant.Water))
+			turbineCoolantTemp.TextStyle.Bg, turbineCoolantTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.Turbine.CoolantTempAlarm.Severity())
 
 			turbineSpeed.Text = fmt.Sprintf("%.2frpm", rc.Simulation.Reactor.Turbine.SpeedRPM)
 			turbineSpeed.TextStyle.Bg, turbineSpeed.TextStyle.Fg = severity(rc.Simulation.Reactor.Turbine.SpeedRPMAlarm.Severity())
 
-			primaryInletTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.Primary.InletTemp)
+			primaryInletTemp.Text = fmt.Sprintf("%.2fc", reactor.CoolantAverage(rc.Simulation.Reactor.Primary.Inlet.Water))
 			primaryInletTemp.TextStyle.Bg, primaryInletTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.Primary.InletTempAlarm.Severity())
 
-			primaryOutletTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.Primary.OutletTemp)
+			primaryOutletTemp.Text = fmt.Sprintf("%.2fc", reactor.CoolantAverage(rc.Simulation.Reactor.Primary.Outlet.Water))
 			primaryOutletTemp.TextStyle.Bg, primaryOutletTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.Primary.OutletTempAlarm.Severity())
 
-			secondaryInletTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.Secondary.InletTemp)
+			secondaryInletTemp.Text = fmt.Sprintf("%.2fc", reactor.CoolantAverage(rc.Simulation.Reactor.Secondary.Inlet.Water))
 			secondaryInletTemp.TextStyle.Bg, secondaryInletTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.Secondary.InletTempAlarm.Severity())
 
-			secondaryOutletTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.Secondary.OutletTemp)
+			secondaryOutletTemp.Text = fmt.Sprintf("%.2fc", reactor.CoolantAverage(rc.Simulation.Reactor.Secondary.Outlet.Water))
 			secondaryOutletTemp.TextStyle.Bg, secondaryOutletTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.Secondary.OutletTempAlarm.Severity())
 
 			command.Text = "> " + rc.Command

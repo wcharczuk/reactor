@@ -15,8 +15,13 @@ func NewTurbine(cfg Config) *Turbine {
 		Component: NewComponent(cfg),
 		Coolant:   NewCoolant(),
 	}
+	t.CoolantTempAlarm = NewThresholdAlarm(
+		"Turbine Coolant Temp",
+		func() float64 { return CoolantAverage(t.Coolant.Water) },
+		SeverityThreshold(TurbineCoolantFatal, TurbineCoolantCritical, TurbineCoolantWarning),
+	)
 	t.SpeedRPMAlarm = NewThresholdAlarm(
-		"Turbine",
+		"Turbine Speed",
 		func() float64 { return t.SpeedRPM },
 		SeverityThreshold(TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning),
 	)
@@ -26,16 +31,18 @@ func NewTurbine(cfg Config) *Turbine {
 // Turbine generates power based on fan rpm.
 type Turbine struct {
 	*Component
-	Output        float64
-	SpeedRPM      float64
-	SpeedRPMAlarm *ThresholdAlarm
-	Coolant       *Coolant
+	Output           float64
+	SpeedRPM         float64
+	SpeedRPMAlarm    *ThresholdAlarm
+	Coolant          *Coolant
+	CoolantTempAlarm *ThresholdAlarm
 }
 
 // Alarms implements alarmable.
 func (t *Turbine) Alarms() []Alarm {
 	return []Alarm{
 		t.SpeedRPMAlarm,
+		t.CoolantTempAlarm,
 	}
 }
 
