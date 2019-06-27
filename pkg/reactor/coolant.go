@@ -52,23 +52,18 @@ type Coolant struct {
 // Push pushes a block of water through the loop.
 // It first pulls water out of the loop, and then adds water passed in one by one.
 func (c *Coolant) Push(water ...*Water) {
-	var moved []*Water
-	canMove := cap(c.Water) - len(c.Water)
-	if canMove > len(water) {
-
-	}
-
-	for x := 0; x < len(water); x++ {
-		moved = append(moved, <-c.Water)
-		c.Water <- water[x]
-	}
+	c.Water = append(c.Water, water...)
 }
 
 // Pull removes water from the coolant line.
 func (c *Coolant) Pull(count int) []*Water {
-	var pulled []*Water
-	for x := 0; x < count; x++ {
-		pulled = append(pulled, <-c.Water)
+	if count < len(c.Water) {
+		pulled := c.Water[:count]
+		c.Water = c.Water[count:]
+		return pulled
 	}
+
+	pulled := c.Water
+	c.Water = nil
 	return pulled
 }
