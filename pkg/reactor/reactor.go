@@ -21,6 +21,21 @@ func NewReactor(cfg Config) *Reactor {
 			NewControlRod(cfg, 2),
 			NewControlRod(cfg, 3),
 			NewControlRod(cfg, 4),
+			NewControlRod(cfg, 5),
+		},
+		FuelRods: []*FuelRod{
+			NewFuelRod(cfg, 0),
+			NewFuelRod(cfg, 1),
+			NewFuelRod(cfg, 2),
+			NewFuelRod(cfg, 3),
+			NewFuelRod(cfg, 4),
+			NewFuelRod(cfg, 5),
+			NewFuelRod(cfg, 6),
+			NewFuelRod(cfg, 7),
+			NewFuelRod(cfg, 8),
+			NewFuelRod(cfg, 9),
+			NewFuelRod(cfg, 10),
+			NewFuelRod(cfg, 11),
 		},
 		Coolant:   NewCoolant(),
 		Primary:   NewPump("primary", cfg),
@@ -50,12 +65,15 @@ func NewReactor(cfg Config) *Reactor {
 type Reactor struct {
 	*Component
 
-	CoreTemp             float64
+	Reactivity float64 // measured in watts
+
+	CoreTemp             float64 // temp in celsius
 	CoreTempAlarm        *ThresholdAlarm
-	ContainmentTemp      float64
+	ContainmentTemp      float64 // temp in celsius
 	ContainmentTempAlarm *ThresholdAlarm
 	Coolant              *Coolant
 
+	FuelRods    []*FuelRod
 	ControlRods []*ControlRod
 	Primary     *Pump
 	Secondary   *Pump
@@ -68,6 +86,9 @@ func (r *Reactor) Alarms() []Alarm {
 		r.ContainmentTempAlarm,
 		r.CoreTempAlarm,
 	}
+	for _, fr := range r.FuelRods {
+		alarms = append(alarms, fr.Alarms()...)
+	}
 	for _, cr := range r.ControlRods {
 		alarms = append(alarms, cr.Alarms()...)
 	}
@@ -79,12 +100,21 @@ func (r *Reactor) Alarms() []Alarm {
 
 // Simulate advances the simulation by the quantum.
 func (r *Reactor) Simulate(quantum time.Duration) error {
-	// create core heat
+	for _, fr := range r.FuelRods {
+		if err := fr.Simulate(quantum); err != nil {
+			return err
+		}
+		CoolantHeatTransfer(r.Coolant.Water, &fr.Temp, r.Config.ConductionRateMinuteOrDefault(), quantum)
+	}
+
 	for _, cr := range r.ControlRods {
 		if err := cr.Simulate(quantum); err != nil {
 			return err
 		}
+		CoolantHeatTransfer(r.Coolant.Water, &cr.Temp, r.Config.ConductionRateMinuteOrDefault(), quantum)
 	}
+
+	// create or remove steam based on heat
 	if err := r.Primary.Simulate(quantum); err != nil {
 		return err
 	}

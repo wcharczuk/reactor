@@ -129,7 +129,8 @@ func (rc *RenderContext) HandleInput(e termui.Event) (err error) {
 // Render renders controls and advances the simulation.
 func (rc *RenderContext) Render() func() error {
 	totalWidth := 160
-	totalHeight := 24
+	controlHeight := 3
+	totalHeight := controlHeight + (controlHeight * len(rc.Simulation.Reactor.ControlRods)) + (2 * controlHeight)
 
 	gaugeWidth := 50
 	controlRodTempWidth := 15
@@ -148,7 +149,7 @@ func (rc *RenderContext) Render() func() error {
 
 		header := widgets.NewParagraph()
 		header.Text = "Reactor"
-		header.SetRect(r(0, 0, 9, 3))
+		header.SetRect(r(0, 0, 9, controlHeight))
 		rc.Controls = append(rc.Controls, header)
 
 		messageList := widgets.NewParagraph()
@@ -176,29 +177,34 @@ func (rc *RenderContext) Render() func() error {
 			gaugeTop = gaugeTop + h(gauge)
 		}
 
-		output := widgets.NewParagraph()
-		output.Title = "Output"
-		output.SetRect(r(gaugeWidth+controlRodTempWidth, h(header), middleWidth, 3))
-		rc.Controls = append(rc.Controls, output)
+		reactorOutput := widgets.NewParagraph()
+		reactorOutput.Title = "React. Output"
+		reactorOutput.SetRect(r(gaugeWidth+controlRodTempWidth, controlHeight, middleWidth2, 3))
+		rc.Controls = append(rc.Controls, reactorOutput)
+
+		turbineOutput := widgets.NewParagraph()
+		turbineOutput.Title = "Turb. Output"
+		turbineOutput.SetRect(r(gaugeWidth+controlRodTempWidth+middleWidth2, controlHeight, middleWidth2+1, 3))
+		rc.Controls = append(rc.Controls, turbineOutput)
 
 		turbineCoolantTemp := widgets.NewParagraph()
 		turbineCoolantTemp.Title = "Turb. Temp"
-		turbineCoolantTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output), middleWidth2, 3))
+		turbineCoolantTemp.SetRect(r(gaugeWidth+controlRodTempWidth, 2*controlHeight, middleWidth2, 3))
 		rc.Controls = append(rc.Controls, turbineCoolantTemp)
 
 		turbineSpeed := widgets.NewParagraph()
 		turbineSpeed.Title = "Turbine RPM"
-		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineCoolantTemp), h(header)+h(output), middleWidth2+1, 3))
+		turbineSpeed.SetRect(r(gaugeWidth+controlRodTempWidth+w(turbineCoolantTemp), 2*controlHeight, middleWidth2+1, 3))
 		rc.Controls = append(rc.Controls, turbineSpeed)
 
 		coreTemp := widgets.NewParagraph()
 		coreTemp.Title = "Core Temp"
-		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, h(header)+h(output)+h(turbineCoolantTemp), middleWidth2, 3))
+		coreTemp.SetRect(r(gaugeWidth+controlRodTempWidth, 3*controlHeight, middleWidth2, 3))
 		rc.Controls = append(rc.Controls, coreTemp)
 
 		containmentTemp := widgets.NewParagraph()
 		containmentTemp.Title = "Cont. Temp"
-		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), h(header)+h(output)+h(turbineCoolantTemp), middleWidth2+1, 3))
+		containmentTemp.SetRect(r(gaugeWidth+controlRodTempWidth+w(coreTemp), 3*controlHeight, middleWidth2+1, 3))
 		rc.Controls = append(rc.Controls, containmentTemp)
 
 		primaryPump := widgets.NewGauge()
@@ -262,7 +268,8 @@ func (rc *RenderContext) Render() func() error {
 				rc.Notices = append(rc.Notices, noticeBox)
 			}
 
-			output.Text = reactor.FormatOutput(rc.Simulation.Reactor.Turbine.Output)
+			reactorOutput.Text = reactor.FormatOutput(rc.Simulation.Reactor.Reactivity)
+			turbineOutput.Text = reactor.FormatOutput(rc.Simulation.Reactor.Turbine.Output)
 
 			coreTemp.Text = fmt.Sprintf("%.2fc", rc.Simulation.Reactor.CoreTemp)
 			coreTemp.TextStyle.Bg, coreTemp.TextStyle.Fg = severity(rc.Simulation.Reactor.CoreTempAlarm.Severity())

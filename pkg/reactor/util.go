@@ -3,11 +3,15 @@ package reactor
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// QuantumFraction applies a quantum fraction to a rate given in minutes.
+func QuantumFraction(rate float64, quantum time.Duration) float64 {
+	return rate * (float64(quantum) / float64(time.Minute))
+}
 
 // SeverityThreshold returns a new serverity provider based on (3) different severity states.
 func SeverityThreshold(fatal, critical, warning float64) func(float64) Severity {
@@ -27,7 +31,7 @@ func SeverityThreshold(fatal, critical, warning float64) func(float64) Severity 
 
 // Transfer moves quantity from one value to another given a rate and quantum.
 func Transfer(from, to *float64, rate float64, quantum time.Duration) {
-	quantumFraction := float64(quantum) / float64(time.Minute)
+	quantumFraction := QuantumFraction(rate, quantum)
 	effectiveRate := rate * quantumFraction
 	delta := (*from - *to)
 
@@ -38,31 +42,6 @@ func Transfer(from, to *float64, rate float64, quantum time.Duration) {
 
 	*from = *from - (transferred / 2.0)
 	*to = *to + (transferred / 2.0)
-}
-
-// RollFailure rolls a failure probability with the stdlib random provider.
-func RollFailure(probability float64, quantum time.Duration) bool {
-	return RollFailureFromProvider(rand.Float64, probability, quantum)
-}
-
-// RollFailureFromProvider rolls a failure probability with a given random provider.
-func RollFailureFromProvider(randomProvider func() float64, probability float64, quantum time.Duration) bool {
-	probability = probability / (float64(quantum) / float64(time.Minute))
-	return randomProvider() >= probability
-}
-
-// FailureProbability returns a failure probability based on an alarm severity.
-func FailureProbability(severity Severity) float64 {
-	switch severity {
-	case SeverityFatal:
-		return 0.8
-	case SeverityCritical:
-		return 0.2
-	case SeverityWarning:
-		return 0.05
-	default:
-		return 0
-	}
 }
 
 // Percent returns the percent of the maximum of a given value.
@@ -191,35 +170,4 @@ func Below(max int) func(int) error {
 // ValidUint8 returns a validator for uint8s.
 func ValidUint8(v int) error {
 	return Between(0, int(math.MaxUint8))(v)
-}
-
-// QuantumFraction applies a quantum fraction to a rate given in minutes.
-func QuantumFraction(rate float64, quantum time.Duration) float64 {
-	return rate * (float64(quantum) / float64(time.Minute))
-}
-
-// CoolantAverage averages the temperature values in a coolant flow.
-func CoolantAverage(pool chan *Water) float64 {
-	poolCount := len(pool)
-	var accum float64
-	var w *Water
-	for x := 0; x < poolCount; x++ {
-		w = <-pool
-		accum += w.Temp
-		pool <- w
-	}
-	return accum / float64(poolCount)
-}
-
-// CoolantHeatTransfer transfers heat from a source into the pool given as a chanel of water.
-func CoolantHeatTransfer(pool chan *Water, sourceTemp *float64, rate float64, quantum time.Duration) {
-	poolCount := len(pool)
-	effectiveRate := rate / float64(poolCount)
-
-	var w *Water
-	for x := 0; x < poolCount; x++ {
-		w = <-pool
-		Transfer(sourceTemp, &w.Temp, effectiveRate, quantum)
-		pool <- w
-	}
 }

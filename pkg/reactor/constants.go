@@ -13,33 +13,29 @@ const (
 	RPMThresholdMessageFormat  = "RPM Above %0.2f"
 )
 
+// Xenon constants
 const (
-	// XenonProductionRate is the amount of xenon created per unit of reaction rate.
-	XenonProductionRate = 0.5
-	// XenonThreshold is the point at which xemon starts to burn off.
-	// It is a core temperature.
-	XenonThreshold = 500
-	// XenonAbsorbtionRate is the amount of reactivity absorbed per
-	// unit of xenon.
-	XenonAbsorbtionRate = 10
+	XenonProductionCoefficient = 0.05 // how much xenon is produced per unit reactivity
+	XenonCoefficient           = 0.9  // how much does xenon affect reactivity
+	XenonTempThreshold         = 500  // when does xenon start burning off
+	XenonBurnRateMinute        = 1024 //
+)
 
-	// XenonBurnRateMinute is the rate xenon burns off per unit temperature above a threshold.
-	XenonBurnRateMinute = 1024
-
+const (
 	// SteamThreshold is the temperature at which water turns to steam.
 	// If the core is above this threshold, the water in the core turns to steam.
 	// If the pump is active, that steam is replaced by water.
 	SteamThreshold = 100.0
 
-	// CoolantLoopVolume is the volume of a coolant loop section.
-	CoolantLoopVolume = 1024
+	// VoidCoefficient is the rate that a void (or steam) increases reactivity.
+	VoidCoefficient = 1.05
 )
 
 // Alarm Thresholds
 const (
-	CoreTempWarning  = 1000.0
-	CoreTempCritical = 2000.0
-	CoreTempFatal    = 3000.0
+	CoreTempWarning  = 500.0
+	CoreTempCritical = 750.0
+	CoreTempFatal    = 1000.0
 
 	ContainmentTempWarning  = 200.0
 	ContainmentTempCritical = 400.0
@@ -60,6 +56,10 @@ const (
 	TurbineRPMWarning  = 5000.0
 	TurbineRPMCritical = 6000.0
 	TurbineRPMFatal    = 8000.0
+
+	FuelRodTempWarning  = 2000.0
+	FuelRodTempCritical = 3000.0
+	FuelRodTempFatal    = 4000.0
 
 	ControlRodTempWarning  = 2000.0
 	ControlRodTempCritical = 3000.0
