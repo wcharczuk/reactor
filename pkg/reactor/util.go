@@ -13,8 +13,8 @@ func QuantumFraction(rate float64, quantum time.Duration) float64 {
 	return rate * (float64(quantum) / float64(time.Minute))
 }
 
-// SeverityThreshold returns a new serverity provider based on (3) different severity states.
-func SeverityThreshold(fatal, critical, warning float64) func(float64) Severity {
+// Thresholds returns a new serverity provider based on (3) different severity states.
+func Thresholds(fatal, critical, warning float64) func(float64) Severity {
 	return func(value float64) Severity {
 		if value > fatal {
 			return SeverityFatal

@@ -18,24 +18,9 @@ type RenderContext struct {
 	Controls        []termui.Drawable
 	ControlRods     []*widgets.Gauge
 	ControlRodTemps []*widgets.Paragraph
+	FuelRods        []*widgets.Gauge
+	FuelRodTemps    []*widgets.Paragraph
 	Notices         []*widgets.Paragraph
-}
-
-// AllControls returns a unified list of controls.
-func (rc RenderContext) AllControls() (all []termui.Drawable) {
-	for _, c := range rc.Controls {
-		all = append(all, c)
-	}
-	for _, c := range rc.ControlRods {
-		all = append(all, c)
-	}
-	for _, c := range rc.ControlRodTemps {
-		all = append(all, c)
-	}
-	for _, c := range rc.Notices {
-		all = append(all, c)
-	}
-	return
 }
 
 // Simulate runs the actual simulation.
@@ -321,6 +306,29 @@ func (rc *RenderContext) Render() func() error {
 			time.Sleep(50 * time.Millisecond)
 		}
 	}
+}
+
+// AllControls returns a unified list of controls.
+func (rc RenderContext) AllControls() (all []termui.Drawable) {
+	for _, c := range rc.Controls {
+		all = append(all, c)
+	}
+	for _, c := range rc.ControlRods {
+		all = append(all, c)
+	}
+	for _, c := range rc.ControlRodTemps {
+		all = append(all, c)
+	}
+	for _, c := range rc.FuelRods {
+		all = append(all, c)
+	}
+	for _, c := range rc.FuelRodTemps {
+		all = append(all, c)
+	}
+	for _, c := range rc.Notices {
+		all = append(all, c)
+	}
+	return
 }
 
 // SampleStats pulls relevant stats off the simulation.

@@ -15,7 +15,7 @@ func NewFuelRod(cfg Config, index int) *FuelRod {
 	fr.TempAlarm = NewThresholdAlarm(
 		fmt.Sprintf("Fuel Rod %d temp", index),
 		func() float64 { return fr.Temp },
-		SeverityThreshold(FuelRodTempFatal, FuelRodTempCritical, FuelRodTempWarning),
+		Thresholds(FuelRodTempFatal, FuelRodTempCritical, FuelRodTempWarning),
 	)
 	return fr
 }

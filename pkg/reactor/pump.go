@@ -20,12 +20,12 @@ func NewPump(name string, cfg Config) *Pump {
 	p.InletTempAlarm = NewThresholdAlarm(
 		fmt.Sprintf("%s Pump Inlet Temp", name),
 		func() float64 { return CoolantAverage(p.Inlet.Water) },
-		SeverityThreshold(PumpInletFatal, PumpInletCritical, PumpInletWarning),
+		Thresholds(PumpInletFatal, PumpInletCritical, PumpInletWarning),
 	)
 	p.OutletTempAlarm = NewThresholdAlarm(
 		fmt.Sprintf("%s Pump Outlet Temp", name),
 		func() float64 { return CoolantAverage(p.Outlet.Water) },
-		SeverityThreshold(PumpOutletFatal, PumpOutletCritical, PumpOutletWarning),
+		Thresholds(PumpOutletFatal, PumpOutletCritical, PumpOutletWarning),
 	)
 
 	return p

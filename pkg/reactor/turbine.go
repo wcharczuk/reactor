@@ -18,12 +18,12 @@ func NewTurbine(cfg Config) *Turbine {
 	t.CoolantTempAlarm = NewThresholdAlarm(
 		"Turbine Coolant Temp",
 		func() float64 { return CoolantAverage(t.Coolant.Water) },
-		SeverityThreshold(TurbineCoolantFatal, TurbineCoolantCritical, TurbineCoolantWarning),
+		Thresholds(TurbineCoolantFatal, TurbineCoolantCritical, TurbineCoolantWarning),
 	)
 	t.SpeedRPMAlarm = NewThresholdAlarm(
 		"Turbine Speed",
 		func() float64 { return t.SpeedRPM },
-		SeverityThreshold(TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning),
+		Thresholds(TurbineRPMFatal, TurbineRPMCritical, TurbineRPMWarning),
 	)
 	return t
 }

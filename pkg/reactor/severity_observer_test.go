@@ -14,7 +14,7 @@ func TestSeverityObserver(t *testing.T) {
 	critical := 50.0
 	warn := 10.0
 
-	innerProvider := SeverityThreshold(fatal, critical, warn)
+	innerProvider := Thresholds(fatal, critical, warn)
 
 	var value float64
 	outerProvider := func() Severity {

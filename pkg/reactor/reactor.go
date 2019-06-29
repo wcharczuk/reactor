@@ -51,12 +51,12 @@ func NewReactor(cfg Config) *Reactor {
 	r.ContainmentTempAlarm = NewThresholdAlarm(
 		"Containment Temp",
 		func() float64 { return r.ContainmentTemp },
-		SeverityThreshold(ContainmentTempFatal, ContainmentTempCritical, ContainmentTempWarning),
+		Thresholds(ContainmentTempFatal, ContainmentTempCritical, ContainmentTempWarning),
 	)
 	r.CoreTempAlarm = NewThresholdAlarm(
 		"Core Temp",
 		func() float64 { return r.CoreTemp },
-		SeverityThreshold(CoreTempFatal, CoreTempCritical, CoreTempWarning),
+		Thresholds(CoreTempFatal, CoreTempCritical, CoreTempWarning),
 	)
 	return r
 }
