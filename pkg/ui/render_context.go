@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"image"
 	"strings"
 	"time"
 
@@ -11,26 +10,31 @@ import (
 	"github.com/wcharczuk/termui/widgets"
 )
 
+// NewRenderContext returns a new render context.
+func NewRenderContext(sim *reactor.Simulation) *RenderContext {
+	return &RenderContext{
+		Canvas:     NewCanvas(50, 160),
+		Simulation: sim,
+	}
+}
+
 // RenderContext is everything needed to render the simulation.
 type RenderContext struct {
+	Canvas
+
 	CommandText   string
 	OutputHistory []Sample
 	Simulation    *reactor.Simulation
 
-	Canvas image.Rectangle
-
-	Controls []termui.Drawable
-	Notices  []*widgets.Paragraph
-
-	ControlRods     []*widgets.Gauge
-	ControlRodTemps []*widgets.Paragraph
-	FuelRods        []*widgets.Gauge
-	FuelRodTemps    []*widgets.Paragraph
-
-	Header      *widgets.Paragraph
-	Command     *widgets.Paragraph
-	MessageList *widgets.Paragraph
-
+	Controls            []termui.Drawable
+	Notices             []*widgets.Paragraph
+	ControlRods         []*widgets.Gauge
+	ControlRodTemps     []*widgets.Paragraph
+	FuelRods            []*widgets.Gauge
+	FuelRodTemps        []*widgets.Paragraph
+	Header              *widgets.Paragraph
+	Command             *widgets.Paragraph
+	MessageList         *widgets.Paragraph
 	ReactorOutput       *widgets.Paragraph
 	TurbineOutput       *widgets.Paragraph
 	TurbineSpeed        *widgets.Paragraph
@@ -41,9 +45,8 @@ type RenderContext struct {
 	SecondaryOutletTemp *widgets.Paragraph
 	CoreTemp            *widgets.Paragraph
 	ContainmentTemp     *widgets.Paragraph
-
-	PrimaryPump   *widgets.Gauge
-	SecondaryPump *widgets.Gauge
+	PrimaryPump         *widgets.Gauge
+	SecondaryPump       *widgets.Gauge
 }
 
 // Simulate runs the actual simulation.
@@ -145,33 +148,6 @@ func (rc *RenderContext) Render() func() error {
 		}()
 
 		for {
-			noticeTop := 0
-			noticeCount := len(rc.Simulation.Notices)
-			for _, noticeBox := range rc.Notices {
-				noticeTop += Height(noticeBox)
-			}
-
-			for x := 0; x < noticeCount; x++ {
-				notice := <-rc.Simulation.Notices
-
-				noticeBox := widgets.NewParagraph()
-				noticeBox.Title = notice.Heading + " (press <Enter> to dismiss)"
-
-				noticeBox.Text = "\n" + notice.Message() + "\n"
-				noticeBox.BorderStyle.Fg, _ = severity(notice.Severity)
-
-				width := notice.Dx()
-				if titleLen := len(noticeBox.Title); titleLen > width {
-					width = titleLen
-				}
-				height := notice.Dy() + 4
-				left := (rc.Canvas.Dx() >> 1) - (width >> 1)
-
-				noticeBox.SetRect(RelativeRect(left, noticeTop, width+4, height))
-
-				noticeTop = noticeTop + Height(noticeBox)
-				rc.Notices = append(rc.Notices, noticeBox)
-			}
 
 			rc.ReactorOutput.Text = reactor.FormatOutput(rc.Simulation.Reactor.Reactivity)
 			rc.TurbineOutput.Text = reactor.FormatOutput(rc.Simulation.Reactor.Turbine.Output)
@@ -280,34 +256,9 @@ func (rc *RenderContext) SampleStats() func() error {
 // utility functions
 
 func (rc *RenderContext) initControls() {
-	totalWidth := 160
-	controlHeight := 3
-	totalHeight := controlHeight + (controlHeight * len(rc.Simulation.Reactor.ControlRods)) + (2 * controlHeight)
-
-	gaugeWidth := 50
-	controlRodTempWidth := 15
-	messageListWidth := 60
-
-	middleWidth := totalWidth - (gaugeWidth + controlRodTempWidth + messageListWidth)
-	middleWidth2 := middleWidth >> 1
-
-	col12 := totalWidth
-	col1 := totalWidth / 12
-	col2 := totalWidth / 2
-	col3 := totalWidth / 4
-	col4 := totalWidth / 3
-
-	rowHeight := 3
-	row0 := 0
-	row1 := rowHeight
-	row2 := 2 * rowHeight
-	row3 := 3 * rowHeight
-	row4 := 4 * rowHeight
-	row5 := 5 * rowHeight
-
 	rc.Header = widgets.NewParagraph()
 	rc.Header.Text = "Reactor"
-	rc.Header.SetRect(RelativeRect(0, 0, 9, controlHeight))
+	rc.Header.SetRect(rc.Canvas.Col1(0, 0))
 
 	rc.MessageList = widgets.NewParagraph()
 	rc.MessageList.Title = "SKALA"
@@ -317,7 +268,6 @@ func (rc *RenderContext) initControls() {
 	rc.Command.Text = "> " + rc.CommandText
 	rc.Command.SetRect(RelativeRect(9, 0, totalWidth-(Width(rc.MessageList)+Width(rc.Header)), 3))
 
-	gaugeTop := row1
 	for index := range rc.Simulation.Reactor.ControlRods {
 		gauge := widgets.NewGauge()
 		gauge.Title = fmt.Sprintf("Control Rod %d", index)
@@ -382,6 +332,43 @@ func (rc *RenderContext) initControls() {
 	rc.SecondaryOutletTemp = widgets.NewParagraph()
 	rc.SecondaryOutletTemp.Title = "Sec. Out Temp"
 	rc.SecondaryOutletTemp.SetRect(RelativeRect(50+Width(rc.SecondaryInletTemp), gaugeTop, 17, 3))
+}
+
+func (rc *RenderContext) drawNotices() {
+	// figure out where to add new notices ...
+	var noticeTop int
+	noticeCount := len(rc.Simulation.Notices)
+	for _, noticeBox := range rc.Notices {
+		noticeTop += noticeBox.GetRect().Dy()
+	}
+
+	if noticeTop >= rc.Canvas.Height {
+		return
+	}
+
+	for x := 0; x < noticeCount; x++ {
+		notice := <-rc.Simulation.Notices
+
+		noticeBox := widgets.NewParagraph()
+		noticeBox.Title = notice.Heading + " (press <Enter> to dismiss)"
+
+		noticeBox.Text = "\n" + notice.Message() + "\n"
+		noticeBox.BorderStyle.Fg, _ = severity(notice.Severity)
+
+		width := notice.Dx()
+		if titleLen := len(noticeBox.Title); titleLen > width {
+			width = titleLen
+		}
+
+		left := (rc.Canvas.Dx() >> 1) - (width >> 1)
+		right := width + 4
+		bottom := notice.Dy() + 4
+
+		noticeBox.SetRect(RelativeRect(left, noticeTop, width+4, height))
+
+		noticeTop = noticeTop + Height(noticeBox)
+		rc.Notices = append(rc.Notices, noticeBox)
+	}
 }
 
 func (rc *RenderContext) getOutputHistory(last int) (data []float64) {
