@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"image"
-
 	"github.com/wcharczuk/reactor/pkg/reactor"
 	"github.com/wcharczuk/termui"
 )
@@ -29,26 +27,6 @@ func escapeInput(value string) string {
 	default:
 		return value
 	}
-}
-
-func r(x, y, width, height int) (x0, y0, x1, y1 int) {
-	x0 = x
-	y0 = y
-	x1 = x + width
-	y1 = y + height
-	return
-}
-
-type rectProvider interface {
-	GetRect() image.Rectangle
-}
-
-func w(c rectProvider) int {
-	return c.GetRect().Dx()
-}
-
-func h(c rectProvider) int {
-	return c.GetRect().Dy()
 }
 
 func severity(severity reactor.Severity) (background, foreground termui.Color) {
