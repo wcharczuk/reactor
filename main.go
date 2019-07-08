@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/blend/go-sdk/async"
+
 	"github.com/blend/go-sdk/configutil"
 	"github.com/blend/go-sdk/logger"
 
@@ -41,11 +42,9 @@ func main() {
 	}
 
 	s := reactor.NewSimulation(reactor.DefaultConfig)
+	rc := ui.NewRenderContext(s)
 
-	rc := &ui.RenderContext{
-		Simulation: s,
-	}
-
+	rc.Init()
 	err = async.RunToError(
 		rc.HandleInputs(),
 		rc.Render(),

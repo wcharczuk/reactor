@@ -13,7 +13,7 @@ import (
 // NewRenderContext returns a new render context.
 func NewRenderContext(sim *reactor.Simulation) *RenderContext {
 	return &RenderContext{
-		Canvas:     NewCanvas(50, 160),
+		Canvas:     NewCanvas(25, 160),
 		Simulation: sim,
 	}
 }
@@ -22,15 +22,16 @@ func NewRenderContext(sim *reactor.Simulation) *RenderContext {
 type RenderContext struct {
 	Canvas
 
+	Recover bool
+
 	CommandText   string
 	OutputHistory []Sample
 	Simulation    *reactor.Simulation
 
 	Controls            []termui.Drawable
 	Notices             []*widgets.Paragraph
-	ControlRods         []*widgets.Gauge
+	ControlRods         []*widgets.Paragraph
 	ControlRodTemps     []*widgets.Paragraph
-	FuelRods            []*widgets.Gauge
 	FuelRodTemps        []*widgets.Paragraph
 	Header              *widgets.Paragraph
 	Command             *widgets.Paragraph
@@ -45,8 +46,8 @@ type RenderContext struct {
 	SecondaryOutletTemp *widgets.Paragraph
 	CoreTemp            *widgets.Paragraph
 	ContainmentTemp     *widgets.Paragraph
-	PrimaryPump         *widgets.Gauge
-	SecondaryPump       *widgets.Gauge
+	PrimaryPump         *widgets.Paragraph
+	SecondaryPump       *widgets.Paragraph
 }
 
 // Simulate runs the actual simulation.
@@ -137,6 +138,52 @@ func (rc *RenderContext) HandleInput(e termui.Event) (err error) {
 	return
 }
 
+// Init sets up controls.
+func (rc *RenderContext) Init() {
+
+	// row 0
+	rc.Header = rc.Div("", rc.RowStart(0, 1), OptText("Reactor"))
+	rc.Command = rc.Div("", rc.RightOf(rc.Header, 8))
+	rc.MessageList = rc.Div("SKALA", rc.RightOf(rc.Command, 3), OptHeight(rc.Canvas.Height))
+
+	// control rods
+	var lastCR *widgets.Paragraph
+	for index := range rc.Simulation.Reactor.ControlRods {
+		var cr *widgets.Paragraph
+		if index == 0 {
+			cr = rc.Div("", rc.RowStart(1, 1))
+		} else {
+			cr = rc.Div("", rc.Below(lastCR, 1))
+		}
+
+		crTemp := rc.Div("", rc.RightOf(cr, 1))
+		rc.ControlRods = append(rc.ControlRods, cr)
+		rc.ControlRodTemps = append(rc.ControlRodTemps, crTemp)
+		lastCR = cr
+	}
+
+	// other controls in rows 1-N
+	// row 0
+	rc.ReactorOutput = rc.Div("React. Output", rc.RightOf(rc.ControlRodTemps[0], 1))
+	rc.TurbineOutput = rc.Div("Turb. Output", rc.RightOf(rc.ReactorOutput, 1))
+	rc.TurbineCoolantTemp = rc.Div("Turb. Temp", rc.RightOf(rc.TurbineOutput, 1))
+
+	// row 1
+	rc.TurbineSpeed = rc.Div("Turb. Speed", rc.RightOf(rc.ControlRodTemps[1], 1))
+	rc.CoreTemp = rc.Div("Core Temp", rc.RightOf(rc.TurbineSpeed, 1))
+	rc.ContainmentTemp = rc.Div("Cont. Temp", rc.RightOf(rc.CoreTemp, 1))
+
+	// row 2
+	rc.PrimaryPump = rc.Div("Primary Pump", rc.RightOf(rc.ControlRodTemps[2], 1))
+	rc.PrimaryInletTemp = rc.Div("Pr. In Temp", rc.RightOf(rc.PrimaryPump, 1))
+	rc.PrimaryOutletTemp = rc.Div("Pr. Out Temp", rc.RightOf(rc.PrimaryInletTemp, 1))
+
+	// row 3
+	rc.SecondaryPump = rc.Div("Secondary Pump", rc.RightOf(rc.ControlRodTemps[3], 1))
+	rc.SecondaryInletTemp = rc.Div("Sec. In Temp", rc.RightOf(rc.SecondaryPump, 1))
+	rc.SecondaryOutletTemp = rc.Div("Sec. Out Temp", rc.RightOf(rc.SecondaryInletTemp, 1))
+}
+
 // Render renders controls and advances the simulation.
 func (rc *RenderContext) Render() func() error {
 	return func() (err error) {
@@ -148,6 +195,7 @@ func (rc *RenderContext) Render() func() error {
 		}()
 
 		for {
+			rc.drawNotices()
 
 			rc.ReactorOutput.Text = reactor.FormatOutput(rc.Simulation.Reactor.Reactivity)
 			rc.TurbineOutput.Text = reactor.FormatOutput(rc.Simulation.Reactor.Turbine.Output)
@@ -185,18 +233,18 @@ func (rc *RenderContext) Render() func() error {
 				}
 			}
 
-			var gauge *widgets.Gauge
+			var gauge *widgets.Paragraph
 			var label *widgets.Paragraph
 			for index, controlRod := range rc.Simulation.Reactor.ControlRods {
 				gauge = rc.ControlRods[index]
 				label = rc.ControlRodTemps[index]
-				gauge.Percent = int(controlRod.Position.Percent())
+				gauge.Text = fmt.Sprintf("%0.2f%%", controlRod.Position.Percent())
 				label.Text = fmt.Sprintf("%.2fc", controlRod.Temp)
 				label.TextStyle.Bg, label.TextStyle.Fg = severity(controlRod.TempAlarm.Severity())
 			}
 
-			rc.PrimaryPump.Percent = int(rc.Simulation.Reactor.Primary.Throttle.Percent())
-			rc.SecondaryPump.Percent = int(rc.Simulation.Reactor.Secondary.Throttle.Percent())
+			rc.PrimaryPump.Text = fmt.Sprintf("%0.2f%%", rc.Simulation.Reactor.Primary.Throttle.Percent())
+			rc.SecondaryPump.Text = fmt.Sprintf("%0.2f%%", rc.Simulation.Reactor.Secondary.Throttle.Percent())
 
 			termui.Render(rc.AllControls()...)
 			time.Sleep(50 * time.Millisecond)
@@ -214,20 +262,19 @@ func (rc RenderContext) AllControls() (all []termui.Drawable) {
 		rc.TurbineOutput,
 		rc.TurbineSpeed,
 		rc.TurbineCoolantTemp,
+		rc.PrimaryPump,
 		rc.PrimaryInletTemp,
 		rc.PrimaryOutletTemp,
 		rc.CoreTemp,
 		rc.ContainmentTemp,
-		rc.PrimaryPump,
 		rc.SecondaryPump,
+		rc.SecondaryInletTemp,
+		rc.SecondaryOutletTemp,
 	}
 	for _, c := range rc.ControlRods {
 		all = append(all, c)
 	}
 	for _, c := range rc.ControlRodTemps {
-		all = append(all, c)
-	}
-	for _, c := range rc.FuelRods {
 		all = append(all, c)
 	}
 	for _, c := range rc.FuelRodTemps {
@@ -255,83 +302,35 @@ func (rc *RenderContext) SampleStats() func() error {
 
 // utility functions
 
-func (rc *RenderContext) initControls() {
-	rc.Header = widgets.NewParagraph()
-	rc.Header.Text = "Reactor"
-	rc.Header.SetRect(rc.Canvas.Col1(0, 0))
-
-	rc.MessageList = widgets.NewParagraph()
-	rc.MessageList.Title = "SKALA"
-	rc.MessageList.SetRect(RelativeRect(totalWidth-messageListWidth, 0, messageListWidth, totalHeight))
-
-	rc.Command = widgets.NewParagraph()
-	rc.Command.Text = "> " + rc.CommandText
-	rc.Command.SetRect(RelativeRect(9, 0, totalWidth-(Width(rc.MessageList)+Width(rc.Header)), 3))
-
-	for index := range rc.Simulation.Reactor.ControlRods {
-		gauge := widgets.NewGauge()
-		gauge.Title = fmt.Sprintf("Control Rod %d", index)
-		gauge.SetRect(RelativeRect(0, gaugeTop, gaugeWidth, 3))
-
-		gaugeTemp := widgets.NewParagraph()
-		gaugeTemp.Title = fmt.Sprintf("CR %d Temp", index)
-		gaugeTemp.SetRect(RelativeRect(gaugeWidth, gaugeTop, controlRodTempWidth, 3))
-
-		rc.ControlRods = append(rc.ControlRods, gauge)
-		rc.ControlRodTemps = append(rc.ControlRodTemps, gaugeTemp)
-
-		gaugeTop = gaugeTop + Height(gauge)
+// Div returns a new text paragraph.
+func (rc *RenderContext) Div(title string, options ...ControlOption) *widgets.Paragraph {
+	div := widgets.NewParagraph()
+	div.Title = title
+	for _, opt := range options {
+		opt(div)
 	}
+	return div
+}
 
-	rc.ReactorOutput = widgets.NewParagraph()
-	rc.ReactorOutput.Title = "React. Output"
-	rc.ReactorOutput.SetRect(RelativeRect(gaugeWidth+controlRodTempWidth, controlHeight, middleWidth2, 3))
+// RowStart returns a control option
+func (rc *RenderContext) RowStart(row, colWidth int) ControlOption {
+	return OptSetRect(0, rc.Row(row), rc.Col(colWidth), rc.Row(row)+rc.RowHeight())
+}
 
-	rc.TurbineOutput = widgets.NewParagraph()
-	rc.TurbineOutput.Title = "Turb. Output"
-	rc.TurbineOutput.SetRect(RelativeRect(gaugeWidth+controlRodTempWidth+middleWidth2, controlHeight, middleWidth2+1, 3))
+// RightOf returns a control option that sets the rect to position to the right
+// of a given control on the same row.
+func (rc *RenderContext) RightOf(control GetRectProvider, colWidth int) ControlOption {
+	topLeft := control.GetRect().Min
+	bottomRight := control.GetRect().Max
+	return OptSetRect(bottomRight.X, topLeft.Y, bottomRight.X+rc.Canvas.Col(colWidth), bottomRight.Y)
+}
 
-	rc.TurbineCoolantTemp = widgets.NewParagraph()
-	rc.TurbineCoolantTemp.Title = "Turb. Temp"
-	rc.TurbineCoolantTemp.SetRect(RelativeRect(gaugeWidth+controlRodTempWidth, 2*controlHeight, middleWidth2, 3))
-
-	rc.TurbineSpeed = widgets.NewParagraph()
-	rc.TurbineSpeed.Title = "Turbine RPM"
-	rc.TurbineSpeed.SetRect(RelativeRect(gaugeWidth+controlRodTempWidth+Width(rc.TurbineCoolantTemp), 2*controlHeight, middleWidth2+1, 3))
-
-	rc.CoreTemp = widgets.NewParagraph()
-	rc.CoreTemp.Title = "Core Temp"
-	rc.CoreTemp.SetRect(RelativeRect(gaugeWidth+controlRodTempWidth, 3*controlHeight, middleWidth2, 3))
-
-	rc.ContainmentTemp = widgets.NewParagraph()
-	rc.ContainmentTemp.Title = "Cont. Temp"
-	rc.ContainmentTemp.SetRect(RelativeRect(gaugeWidth+controlRodTempWidth+Width(rc.CoreTemp), 3*controlHeight, middleWidth2+1, 3))
-
-	rc.PrimaryPump = widgets.NewGauge()
-	rc.PrimaryPump.Title = "Primary Pump"
-	rc.PrimaryPump.SetRect(RelativeRect(0, gaugeTop, 50, 3))
-
-	rc.PrimaryInletTemp = widgets.NewParagraph()
-	rc.PrimaryInletTemp.Title = "Pr. In Temp"
-	rc.PrimaryInletTemp.SetRect(RelativeRect(gaugeWidth, gaugeTop, 17, 3))
-
-	rc.PrimaryOutletTemp = widgets.NewParagraph()
-	rc.PrimaryOutletTemp.Title = "Pr. Out Temp"
-	rc.PrimaryOutletTemp.SetRect(RelativeRect(gaugeWidth+Width(rc.PrimaryInletTemp), gaugeTop, 17, 3))
-
-	gaugeTop = gaugeTop + Height(rc.PrimaryPump)
-
-	rc.SecondaryPump = widgets.NewGauge()
-	rc.SecondaryPump.Title = "Secondary Pump"
-	rc.SecondaryPump.SetRect(RelativeRect(0, gaugeTop, 50, 3))
-
-	rc.SecondaryInletTemp = widgets.NewParagraph()
-	rc.SecondaryInletTemp.Title = "Sec. In Temp"
-	rc.SecondaryInletTemp.SetRect(RelativeRect(50, gaugeTop, 17, 3))
-
-	rc.SecondaryOutletTemp = widgets.NewParagraph()
-	rc.SecondaryOutletTemp.Title = "Sec. Out Temp"
-	rc.SecondaryOutletTemp.SetRect(RelativeRect(50+Width(rc.SecondaryInletTemp), gaugeTop, 17, 3))
+// Below returns a control option that sets the rect to the position below
+// a given control.
+func (rc *RenderContext) Below(control GetRectProvider, colWidth int) ControlOption {
+	topLeft := control.GetRect().Min
+	bottomRight := control.GetRect().Max
+	return OptSetRect(topLeft.X, bottomRight.Y, topLeft.X+rc.Canvas.Col(colWidth), bottomRight.Y+rc.Canvas.RowHeight())
 }
 
 func (rc *RenderContext) drawNotices() {
@@ -360,13 +359,13 @@ func (rc *RenderContext) drawNotices() {
 			width = titleLen
 		}
 
-		left := (rc.Canvas.Dx() >> 1) - (width >> 1)
+		left := rc.Width2() - (width >> 1)
 		right := width + 4
 		bottom := notice.Dy() + 4
 
-		noticeBox.SetRect(RelativeRect(left, noticeTop, width+4, height))
+		noticeBox.SetRect(left, noticeTop, right, bottom)
 
-		noticeTop = noticeTop + Height(noticeBox)
+		noticeTop = noticeTop + noticeBox.GetRect().Dy()
 		rc.Notices = append(rc.Notices, noticeBox)
 	}
 }
