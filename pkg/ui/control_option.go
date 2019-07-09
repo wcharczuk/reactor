@@ -11,10 +11,33 @@ type ControlOption func(termui.Drawable)
 // OptText sets the text of a paragraph.
 func OptText(text string) ControlOption {
 	return func(c termui.Drawable) {
-		switch c.(type) {
+		switch p := c.(type) {
 		case *widgets.Paragraph:
-			c.(*widgets.Paragraph).Text = text
+			p.Text = text
 		}
+	}
+}
+
+// OptBorderHide hides the border of a drawable.
+func OptBorderHide(c termui.Drawable) {
+	switch p := c.(type) {
+	case *widgets.Paragraph:
+		p.Border = false
+		p.BorderBottom = false
+		p.BorderTop = false
+		p.BorderLeft = false
+		p.BorderRight = false
+	}
+}
+
+// OptNoPadding hides the border of a drawable.
+func OptNoPadding(c termui.Drawable) {
+	switch p := c.(type) {
+	case *widgets.Paragraph:
+		p.PaddingBottom = 0
+		p.PaddingTop = 0
+		p.PaddingLeft = 0
+		p.PaddingRight = 0
 	}
 }
 

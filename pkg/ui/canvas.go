@@ -25,7 +25,7 @@ func (c Canvas) Height2() int { return c.Height >> 1 }
 func (c Canvas) RowHeight() int { return 3 }
 
 // ColWidth returns the width of a single column.
-func (c Canvas) ColWidth() int { return c.Width / 12 }
+func (c Canvas) ColWidth() int { return c.Width / 24 }
 
 // Row returns the offset of a row by index, starting with 0 as the top most.
 func (c Canvas) Row(i int) int {
@@ -37,7 +37,7 @@ func (c Canvas) Row(i int) int {
 
 // Col returns the offset of a given column.
 func (c Canvas) Col(i int) int {
-	if i < 0 || i > 11 {
+	if i < 0 || i > 23 {
 		panic(fmt.Sprintf("canvas; invalid column, must be between 0 and 11; %d", i))
 	}
 	return i * c.ColWidth()

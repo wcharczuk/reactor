@@ -142,21 +142,21 @@ func (rc *RenderContext) HandleInput(e termui.Event) (err error) {
 func (rc *RenderContext) Init() {
 
 	// row 0
-	rc.Header = rc.Div("", rc.RowStart(0, 1), OptText("Reactor"))
-	rc.Command = rc.Div("", rc.RightOf(rc.Header, 8))
-	rc.MessageList = rc.Div("SKALA", rc.RightOf(rc.Command, 3), OptHeight(rc.Canvas.Height))
+	rc.Header = rc.Div("", rc.RowStart(0, 2), OptText("Reactor"))
+	rc.Command = rc.Div("", rc.RightOf(rc.Header, 12))
+	rc.MessageList = rc.Div("SKALA", rc.RightOf(rc.Command, 10), OptHeight(rc.Canvas.Height))
 
 	// control rods
 	var lastCR *widgets.Paragraph
 	for index := range rc.Simulation.Reactor.ControlRods {
 		var cr *widgets.Paragraph
 		if index == 0 {
-			cr = rc.Div("", rc.RowStart(1, 1))
+			cr = rc.Div("", rc.RowStart(1, 2), OptNoPadding, OptBorderHide)
 		} else {
-			cr = rc.Div("", rc.Below(lastCR, 1))
+			cr = rc.Div("", rc.Below(lastCR, 2), OptNoPadding, OptBorderHide)
 		}
+		crTemp := rc.Div("", rc.RightOf(cr, 2), OptNoPadding, OptBorderHide)
 
-		crTemp := rc.Div("", rc.RightOf(cr, 1))
 		rc.ControlRods = append(rc.ControlRods, cr)
 		rc.ControlRodTemps = append(rc.ControlRodTemps, crTemp)
 		lastCR = cr
@@ -164,24 +164,24 @@ func (rc *RenderContext) Init() {
 
 	// other controls in rows 1-N
 	// row 0
-	rc.ReactorOutput = rc.Div("React. Output", rc.RightOf(rc.ControlRodTemps[0], 1))
-	rc.TurbineOutput = rc.Div("Turb. Output", rc.RightOf(rc.ReactorOutput, 1))
-	rc.TurbineCoolantTemp = rc.Div("Turb. Temp", rc.RightOf(rc.TurbineOutput, 1))
+	rc.ReactorOutput = rc.Div("React. Output", rc.RightOf(rc.ControlRodTemps[0], 3))
+	rc.TurbineOutput = rc.Div("Turb. Output", rc.RightOf(rc.ReactorOutput, 3))
+	rc.TurbineCoolantTemp = rc.Div("Turb. Temp", rc.RightOf(rc.TurbineOutput, 3))
 
 	// row 1
-	rc.TurbineSpeed = rc.Div("Turb. Speed", rc.RightOf(rc.ControlRodTemps[1], 1))
-	rc.CoreTemp = rc.Div("Core Temp", rc.RightOf(rc.TurbineSpeed, 1))
-	rc.ContainmentTemp = rc.Div("Cont. Temp", rc.RightOf(rc.CoreTemp, 1))
+	rc.TurbineSpeed = rc.Div("Turb. Speed", rc.RightOf(rc.ControlRodTemps[1], 3))
+	rc.CoreTemp = rc.Div("Core Temp", rc.RightOf(rc.TurbineSpeed, 3))
+	rc.ContainmentTemp = rc.Div("Cont. Temp", rc.RightOf(rc.CoreTemp, 3))
 
 	// row 2
-	rc.PrimaryPump = rc.Div("Primary Pump", rc.RightOf(rc.ControlRodTemps[2], 1))
-	rc.PrimaryInletTemp = rc.Div("Pr. In Temp", rc.RightOf(rc.PrimaryPump, 1))
-	rc.PrimaryOutletTemp = rc.Div("Pr. Out Temp", rc.RightOf(rc.PrimaryInletTemp, 1))
+	rc.PrimaryPump = rc.Div("Primary Pump", rc.RightOf(rc.ControlRodTemps[2], 3))
+	rc.PrimaryInletTemp = rc.Div("Pr. In Temp", rc.RightOf(rc.PrimaryPump, 3))
+	rc.PrimaryOutletTemp = rc.Div("Pr. Out Temp", rc.RightOf(rc.PrimaryInletTemp, 3))
 
 	// row 3
-	rc.SecondaryPump = rc.Div("Secondary Pump", rc.RightOf(rc.ControlRodTemps[3], 1))
-	rc.SecondaryInletTemp = rc.Div("Sec. In Temp", rc.RightOf(rc.SecondaryPump, 1))
-	rc.SecondaryOutletTemp = rc.Div("Sec. Out Temp", rc.RightOf(rc.SecondaryInletTemp, 1))
+	rc.SecondaryPump = rc.Div("Secondary Pump", rc.RightOf(rc.ControlRodTemps[3], 3))
+	rc.SecondaryInletTemp = rc.Div("Sec. In Temp", rc.RightOf(rc.SecondaryPump, 3))
+	rc.SecondaryOutletTemp = rc.Div("Sec. Out Temp", rc.RightOf(rc.SecondaryInletTemp, 3))
 }
 
 // Render renders controls and advances the simulation.
