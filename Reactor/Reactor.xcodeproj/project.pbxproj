@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		00C6C8B46285B4407CE63E4D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0A1393294B19ECF327E2A0 /* Renderer.swift */; };
 		0BC4DD85D562C6BF72E5161C /* SceneRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E93F40A2461C5D66E69A3781 /* SceneRenderer.swift */; };
+		0D0DE3D8D0FF37530306FC82 /* CoreDiagramRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8382C866216A69E01D0518E2 /* CoreDiagramRenderer.swift */; };
+		20FC63885E6E71333505232A /* AdminServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7105227C05FA7C806DEF6D42 /* AdminServer.swift */; };
 		2F4451D20D126CE368F95668 /* PrimaryLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = E807C60346D633EFA8A879CB /* PrimaryLoop.swift */; };
 		3298953CDE65F4517449D41C /* GameMTKView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 350BCA28E046FFC6C768573A /* GameMTKView.swift */; };
 		485A9F27A56E4BF7B3DDAE35 /* ReactorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D89572B505942599656472 /* ReactorState.swift */; };
@@ -49,9 +51,11 @@
 		3A9BF3FC6617A3572260FFA6 /* GameLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameLoop.swift; sourceTree = "<group>"; };
 		5A7ADCB8B8F2DD4623EE8824 /* Reactivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reactivity.swift; sourceTree = "<group>"; };
 		6E38C5360EC8034605C0EDD5 /* SafetySystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetySystem.swift; sourceTree = "<group>"; };
+		7105227C05FA7C806DEF6D42 /* AdminServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminServer.swift; sourceTree = "<group>"; };
 		732B7AF2DD8BBA222CE2BC43 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		7364BF45212C570AAB3FBA16 /* CommandDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandDispatcher.swift; sourceTree = "<group>"; };
 		7F1805ECF2FEF6761BFA0A9E /* Electrical.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Electrical.swift; sourceTree = "<group>"; };
+		8382C866216A69E01D0518E2 /* CoreDiagramRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDiagramRenderer.swift; sourceTree = "<group>"; };
 		9082E721344DBB828A8B7CEA /* ThermalHydraulics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalHydraulics.swift; sourceTree = "<group>"; };
 		917BC9A2FEFC56EF5D9B9992 /* TerminalLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLayout.swift; sourceTree = "<group>"; };
 		9E211F913B98FAAA203709B9 /* SceneShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SceneShaders.metal; sourceTree = "<group>"; };
@@ -73,6 +77,7 @@
 		07429C59A1B326BA50E67015 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				7105227C05FA7C806DEF6D42 /* AdminServer.swift */,
 				CCBEF8D7A345E702E8F91D01 /* ContentView.swift */,
 				350BCA28E046FFC6C768573A /* GameMTKView.swift */,
 				038797AADE79DAF44AA8B0A1 /* ReactorApp.swift */,
@@ -132,6 +137,7 @@
 			isa = PBXGroup;
 			children = (
 				C5D6F6D8F2E8AFF923B9F7E2 /* BridgingHeader.h */,
+				8382C866216A69E01D0518E2 /* CoreDiagramRenderer.swift */,
 				BD2150637D91D296879D8230 /* CRTShader.metal */,
 				C0D33E2F9934119C9B719B40 /* MeshGenerator.swift */,
 				1E0A1393294B19ECF327E2A0 /* Renderer.swift */,
@@ -207,12 +213,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				20FC63885E6E71333505232A /* AdminServer.swift in Sources */,
 				B033FD3CD39AD741DB4445B6 /* AuxiliarySystems.swift in Sources */,
 				B7ACFB95CA1E25B02D51BB66 /* CRTShader.metal in Sources */,
 				5EC4894FBE8BB9ABF27FD0BE /* CommandDispatcher.swift in Sources */,
 				DF1C2163DAF2A9F75F139565 /* CommandLine.swift in Sources */,
 				5B26229EB2C1F8CA4BC838B4 /* CommandParser.swift in Sources */,
 				64504573A07E1D0FDD49D189 /* ContentView.swift in Sources */,
+				0D0DE3D8D0FF37530306FC82 /* CoreDiagramRenderer.swift in Sources */,
 				D053D66012DE14CF2003A11D /* Electrical.swift in Sources */,
 				82413ACBF1E004F72B07E46F /* GameLoop.swift in Sources */,
 				3298953CDE65F4517449D41C /* GameMTKView.swift in Sources */,

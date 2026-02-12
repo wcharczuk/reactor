@@ -84,7 +84,10 @@ struct CANDUConstants {
     static let generatorPoles: Int = 4
     static let stationServiceBase: Double = 70.0      // MW base load
     static let dieselPower: Double = 5.0              // MW each
-    static let dieselStartTime: Double = 180.0        // seconds (3 minutes)
+    static let dieselStartTime: Double = 30.0          // seconds
+    static let emergencyServiceBase: Double = 2.0      // MW (control room + instruments on diesel)
+    static let dieselOverloadTripDelay: Double = 5.0   // seconds before overload trips diesel
+    static let dieselFuelDuration: Double = 48.0 * 3600.0  // 48 hours at rated load (seconds)
 
     // --- Xenon/Iodine ---
     // Iodine-135 yield from fission
@@ -103,22 +106,28 @@ struct CANDUConstants {
     // --- Safety ---
     static let scramInsertionTime: Double = 2.0       // seconds for full shutoff rod insertion
     static let fuelMeltTemp: Double = 2840.0          // degC (UO2 melting point)
+
+    // --- Rod Movement Speeds ---
+    static let adjusterRodSpeed: Double = 1.0 / 60.0  // full stroke per second (60s full travel, motor-driven)
+    static let mcaRodSpeed: Double = 1.0 / 30.0       // full stroke per second (30s full travel, motor-driven)
 }
 
 // MARK: - Sub-State Types
 
 struct PumpState {
     var rpm: Double
+    var targetRPM: Double      // what the operator requested
     var running: Bool
     var tripped: Bool
     var tripTime: Double // time at which pump was tripped
+    var rpmAtTrip: Double      // actual RPM when tripped (for coastdown)
 
     static func off() -> PumpState {
-        PumpState(rpm: 0.0, running: false, tripped: false, tripTime: 0.0)
+        PumpState(rpm: 0.0, targetRPM: 0.0, running: false, tripped: false, tripTime: 0.0, rpmAtTrip: 0.0)
     }
 
     static func atRated() -> PumpState {
-        PumpState(rpm: CANDUConstants.pumpRatedRPM, running: true, tripped: false, tripTime: 0.0)
+        PumpState(rpm: CANDUConstants.pumpRatedRPM, targetRPM: CANDUConstants.pumpRatedRPM, running: true, tripped: false, tripTime: 0.0, rpmAtTrip: 0.0)
     }
 }
 
@@ -137,9 +146,11 @@ struct DieselGeneratorState {
     var power: Double      // MW currently producing
     var startTime: Double  // game-time when start was commanded; -1 if not started
     var available: Bool    // true once warmup is complete
+    var fuelLevel: Double  // 0.0 to 1.0 (fraction of full tank)
+    var lowFuelWarned: Bool // true once low-fuel alarm has been raised
 
     static func off() -> DieselGeneratorState {
-        DieselGeneratorState(running: false, loaded: false, power: 0.0, startTime: -1.0, available: false)
+        DieselGeneratorState(running: false, loaded: false, power: 0.0, startTime: -1.0, available: false, fuelLevel: 1.0, lowFuelWarned: false)
     }
 }
 
@@ -170,10 +181,12 @@ final class ReactorState {
     // --- Control Devices ---
     // Adjuster rods: 4 banks, position 0 (fully inserted) to 1 (fully withdrawn)
     var adjusterPositions: [Double] = [0.0, 0.0, 0.0, 0.0]
+    var adjusterTargetPositions: [Double] = [0.0, 0.0, 0.0, 0.0]
     // Zone controllers: 6 zones, fill level 0-100%
     var zoneControllerFills: [Double] = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
     // Mechanical Control Absorbers: 2, position 0 (fully inserted) to 1 (fully withdrawn)
     var mcaPositions: [Double] = [0.0, 0.0]
+    var mcaTargetPositions: [Double] = [0.0, 0.0]
     // Shutoff rods: true = inserted (safe), false = withdrawn
     var shutoffRodsInserted: Bool = true
     var shutoffRodInsertionFraction: Double = 1.0 // 1.0 = fully inserted
@@ -214,6 +227,7 @@ final class ReactorState {
     var generatorFrequency: Double = 0.0  // Hz
     var generatorConnected: Bool = false
     var dieselGenerators: [DieselGeneratorState] = [.off(), .off()]
+    var dieselOverloadStartTime: Double = -1.0 // -1 = not overloaded
 
     // --- Xenon / Iodine ---
     var xenonConcentration: Double = 0.0
@@ -227,7 +241,7 @@ final class ReactorState {
 
     // --- Game ---
     var elapsedTime: Double = 0.0
-    var timeAcceleration: Int = 1
+    var timeAcceleration: Double = 1.0
     var currentOrder: String = "COMMENCE REACTOR STARTUP"
 
     // --- Thermal Power ---
@@ -242,6 +256,72 @@ final class ReactorState {
     // --- Moderator ---
     var moderatorCirculating: Bool = false
     var heavyWaterInventory: Double = 100.0 // percent of nominal
+
+    // MARK: - Computed Properties
+
+    /// True when there is an electrical power source available to run pumps and station service.
+    /// Requires either a diesel generator available or the main generator connected to grid.
+    var hasPowerSource: Bool {
+        if generatorConnected { return true }
+        for dg in dieselGenerators {
+            if dg.available { return true }
+        }
+        return false
+    }
+
+    /// Total available diesel capacity (MW) from loaded diesels.
+    var availableDieselCapacity: Double {
+        var total = 0.0
+        for dg in dieselGenerators {
+            if dg.available && dg.loaded {
+                total += CANDUConstants.dieselPower
+            }
+        }
+        return total
+    }
+
+    /// Available electrical capacity (MW): diesel capacity when off-grid, effectively unlimited when on-grid.
+    var availableElectricalCapacity: Double {
+        if generatorConnected {
+            return grossPower + availableDieselCapacity
+        }
+        return availableDieselCapacity
+    }
+
+    /// Emergency service load (MW): base instruments + pump loads (cube-law).
+    /// This is the load that must be carried by diesels when off-grid.
+    var emergencyServiceLoad: Double {
+        var load = CANDUConstants.emergencyServiceBase // 2 MW base
+
+        for pump in primaryPumps where pump.running {
+            let rpmFraction = pump.rpm / CANDUConstants.pumpRatedRPM
+            load += CANDUConstants.pumpMotorPower * pow(rpmFraction, 3.0)
+        }
+
+        for pump in coolingWaterPumps where pump.running {
+            let rpmFraction = pump.rpm / CANDUConstants.pumpRatedRPM
+            load += CANDUConstants.coolingWaterPumpPower * pow(rpmFraction, 3.0)
+        }
+
+        for feedPump in feedPumps where feedPump.running {
+            load += 3.0
+        }
+
+        return load
+    }
+
+    /// Effective electrical load: emergency load when off-grid, full station service when on-grid.
+    var effectiveElectricalLoad: Double {
+        if generatorConnected {
+            return stationServiceLoad
+        }
+        return emergencyServiceLoad
+    }
+
+    /// Whether the current electrical load exceeds available capacity.
+    var isElectricalOverloaded: Bool {
+        return effectiveElectricalLoad > availableElectricalCapacity
+    }
 
     // MARK: - Cold Shutdown Factory
 
@@ -263,8 +343,10 @@ final class ReactorState {
 
         // Control devices - all safe
         state.adjusterPositions = [0.0, 0.0, 0.0, 0.0]
+        state.adjusterTargetPositions = [0.0, 0.0, 0.0, 0.0]
         state.zoneControllerFills = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
         state.mcaPositions = [0.0, 0.0]
+        state.mcaTargetPositions = [0.0, 0.0]
         state.shutoffRodsInserted = true
         state.shutoffRodInsertionFraction = 1.0
 
@@ -299,6 +381,7 @@ final class ReactorState {
         state.generatorFrequency = 0.0
         state.generatorConnected = false
         state.dieselGenerators = [.off(), .off()]
+        state.dieselOverloadStartTime = -1.0
 
         state.xenonConcentration = 0.0
         state.iodineConcentration = 0.0
@@ -308,8 +391,8 @@ final class ReactorState {
         state.alarms = []
 
         state.elapsedTime = 0.0
-        state.timeAcceleration = 1
-        state.currentOrder = "REPORT TO CONTROL ROOM"
+        state.timeAcceleration = 1.0
+        state.currentOrder = "COMMENCE REACTOR STARTUP"
 
         state.thermalPower = 0.0
         state.thermalPowerFraction = 0.0

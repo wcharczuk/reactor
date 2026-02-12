@@ -2,17 +2,19 @@ import Foundation
 import Metal
 import CoreGraphics
 import CoreText
+import ImageIO
+import UniformTypeIdentifiers
 
 /// Renders the TerminalBuffer to a Metal texture using CoreGraphics/CoreText
 class TerminalRenderer {
     // Terminal dimensions in characters
-    static let cols = 320
-    static let rows = 96
+    static let cols = 213
+    static let rows = 70
 
     // Pixel dimensions of the terminal texture
-    // Each character cell is 8×16 pixels for a clean retro look
-    static let cellWidth = 8
-    static let cellHeight = 16
+    // Each character cell is 12×22 pixels for readable text on retina displays
+    static let cellWidth = 12
+    static let cellHeight = 22
     static let textureWidth = cols * cellWidth   // 2560
     static let textureHeight = rows * cellHeight // 1536
 
@@ -22,6 +24,7 @@ class TerminalRenderer {
     private var pixelData: UnsafeMutablePointer<UInt8>!
     private let bytesPerRow: Int
     private let font: CTFont
+    private let fontDescent: CGFloat
     private let colorSpace: CGColorSpace
 
     init(device: MTLDevice) {
@@ -36,6 +39,8 @@ class TerminalRenderer {
         } else {
             self.font = CTFontCreateWithName("Courier" as CFString, CGFloat(TerminalRenderer.cellHeight - 2), nil)
         }
+        // Cache the font descent so descenders (g, y, p, etc.) are fully visible
+        self.fontDescent = ceil(CTFontGetDescent(font))
 
         setupTexture()
         setupContext()
@@ -114,11 +119,27 @@ class TerminalRenderer {
                     let line = CTLineCreateWithAttributedString(str)
 
                     ctx.saveGState()
-                    ctx.textPosition = CGPoint(x: px + 1, y: py + 3)
+                    ctx.textPosition = CGPoint(x: px + 1, y: py + fontDescent)
                     CTLineDraw(line, ctx)
                     ctx.restoreGState()
                 }
             }
+        }
+
+        // Render raster core diagram if present
+        if let diagramData = buffer.coreDiagram {
+            CoreDiagramRenderer.draw(data: diagramData, ctx: ctx,
+                                     cellWidth: TerminalRenderer.cellWidth,
+                                     cellHeight: TerminalRenderer.cellHeight,
+                                     textureHeight: TerminalRenderer.textureHeight)
+        }
+
+        // Render compact overview diagram if present
+        if let overviewData = buffer.overviewDiagram {
+            CoreDiagramRenderer.drawCompact(data: overviewData, ctx: ctx,
+                                            cellWidth: TerminalRenderer.cellWidth,
+                                            cellHeight: TerminalRenderer.cellHeight,
+                                            textureHeight: TerminalRenderer.textureHeight)
         }
 
         // Upload to Metal texture
@@ -128,9 +149,19 @@ class TerminalRenderer {
                         bytesPerRow: bytesPerRow)
     }
 
-    private func cgColor(for color: TerminalColor) -> CGColor {
+    func cgColor(for color: TerminalColor) -> CGColor {
         let (r, g, b) = color.rgb
         return CGColor(red: CGFloat(r), green: CGFloat(g), blue: CGFloat(b), alpha: 1.0)
+    }
+
+    /// Capture the current terminal texture as PNG data.
+    func capturePNG() -> Data? {
+        guard let image = cgContext?.makeImage() else { return nil }
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, UTType.png.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, image, nil)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        return data as Data
     }
 
     deinit {

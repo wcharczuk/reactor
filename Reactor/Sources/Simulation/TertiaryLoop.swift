@@ -17,25 +17,36 @@ enum TertiaryLoop {
 
     // MARK: - Cooling Water Pumps
 
+    /// Cooling water pump ramp rate: 75 RPM/s (reaches 1500 RPM in 20s).
+    private static let coolingWaterPumpRampRate: Double = 75.0
+
+    /// Cooling water pump coastdown time constant (seconds).
+    private static let coolingWaterCoastdownTau: Double = 20.0
+
     private static func updatePumps(state: ReactorState, dt: Double) {
         for i in 0..<2 {
             if state.coolingWaterPumps[i].tripped {
-                // Coastdown
+                // Coastdown from actual RPM at trip
                 let timeSinceTrip = state.elapsedTime - state.coolingWaterPumps[i].tripTime
                 if timeSinceTrip > 0 {
-                    state.coolingWaterPumps[i].rpm = CANDUConstants.pumpRatedRPM * exp(-timeSinceTrip / 20.0)
+                    state.coolingWaterPumps[i].rpm = state.coolingWaterPumps[i].rpmAtTrip * exp(-timeSinceTrip / coolingWaterCoastdownTau)
                     if state.coolingWaterPumps[i].rpm < 1.0 {
                         state.coolingWaterPumps[i].rpm = 0.0
                         state.coolingWaterPumps[i].running = false
                     }
                 }
             } else if state.coolingWaterPumps[i].running {
-                // Ramp to rated RPM
-                let rampRate = CANDUConstants.pumpRatedRPM / 20.0
-                state.coolingWaterPumps[i].rpm = min(
-                    state.coolingWaterPumps[i].rpm + rampRate * dt,
-                    CANDUConstants.pumpRatedRPM
-                )
+                // Ramp toward targetRPM
+                let target = state.coolingWaterPumps[i].targetRPM
+                if state.coolingWaterPumps[i].rpm < target {
+                    state.coolingWaterPumps[i].rpm = min(state.coolingWaterPumps[i].rpm + coolingWaterPumpRampRate * dt, target)
+                } else if state.coolingWaterPumps[i].rpm > target {
+                    state.coolingWaterPumps[i].rpm = max(state.coolingWaterPumps[i].rpm - coolingWaterPumpRampRate * dt, target)
+                }
+                // Auto-stop when ramped down to zero
+                if target == 0 && state.coolingWaterPumps[i].rpm == 0 {
+                    state.coolingWaterPumps[i].running = false
+                }
             } else {
                 // Off - decay
                 state.coolingWaterPumps[i].rpm = max(state.coolingWaterPumps[i].rpm - 75.0 * dt, 0.0)

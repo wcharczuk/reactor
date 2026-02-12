@@ -86,26 +86,13 @@ enum Electrical {
     // MARK: - Net Power
 
     private static func updateNetPower(state: ReactorState) {
-        // Net power = gross - station service
-        // If generator not connected, station service comes from grid/diesels
+        // Net power = power exported to the grid (never negative)
         if state.generatorConnected {
-            state.netPower = state.grossPower - state.stationServiceLoad
+            // Main generator online: net = gross - station service
+            state.netPower = max(state.grossPower - state.stationServiceLoad, 0.0)
         } else {
-            state.netPower = -state.stationServiceLoad // consuming power from grid/diesels
-        }
-
-        // Diesel generator contribution
-        var dieselPower: Double = 0.0
-        for diesel in state.dieselGenerators {
-            if diesel.loaded && diesel.available {
-                dieselPower += diesel.power
-            }
-        }
-
-        // If not connected to grid and diesels are providing power,
-        // net power reflects diesel generation minus station service
-        if !state.generatorConnected && dieselPower > 0 {
-            state.netPower = dieselPower - state.stationServiceLoad
+            // Generator not connected: plant is consuming from diesels, not exporting
+            state.netPower = 0.0
         }
     }
 }

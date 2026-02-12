@@ -38,6 +38,38 @@ enum Reactivity {
         return raw
     }
 
+    // MARK: - Rod Movement
+
+    /// Ramp adjuster rods and MCAs toward their target positions at realistic motor-driven speeds.
+    static func rampRods(state: ReactorState, dt: Double) {
+        // Adjuster rods: ~60s full stroke
+        for i in 0..<4 {
+            let target = state.adjusterTargetPositions[i]
+            let current = state.adjusterPositions[i]
+            if current != target {
+                let maxMove = CANDUConstants.adjusterRodSpeed * dt
+                if target > current {
+                    state.adjusterPositions[i] = min(current + maxMove, target)
+                } else {
+                    state.adjusterPositions[i] = max(current - maxMove, target)
+                }
+            }
+        }
+        // MCAs: ~30s full stroke
+        for i in 0..<2 {
+            let target = state.mcaTargetPositions[i]
+            let current = state.mcaPositions[i]
+            if current != target {
+                let maxMove = CANDUConstants.mcaRodSpeed * dt
+                if target > current {
+                    state.mcaPositions[i] = min(current + maxMove, target)
+                } else {
+                    state.mcaPositions[i] = max(current - maxMove, target)
+                }
+            }
+        }
+    }
+
     // MARK: - Update All Reactivity Components
 
     static func update(state: ReactorState) {

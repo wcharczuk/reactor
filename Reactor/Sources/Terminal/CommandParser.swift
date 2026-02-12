@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents a parsed terminal command.
 enum Command {
-    /// Set a value at a given path. e.g. `set core.adjuster-rods.bank-a.position 0.5`
+    /// Set a value at a given path. e.g. `set core.adjuster-rods.bank-a.pos 0`
     case set(path: String, value: String)
 
     /// Get (read) the current value at a given path. e.g. `get primary.pump.1.rpm`
@@ -20,14 +20,17 @@ enum Command {
     /// Switch the display to a named view. e.g. `view core`
     case view(screen: String)
 
-    /// Set the time acceleration multiplier. e.g. `speed 5`
-    case speed(multiplier: Int)
+    /// Set the time acceleration multiplier. e.g. `speed 5` or `speed 0.5`
+    case speed(multiplier: Double)
 
     /// Show general status summary.
     case status
 
     /// Show help, optionally for a specific topic.
     case help(topic: String?)
+
+    /// Quit / exit the application.
+    case quit
 
     /// Unrecognized command.
     case unknown(text: String)
@@ -106,12 +109,12 @@ struct CommandParser {
 
         case "speed":
             guard tokens.count >= 2 else {
-                return .unknown(text: "speed requires a multiplier: speed <1|2|5|10>")
+                return .unknown(text: "speed requires a multiplier: speed <0.1|0.25|0.5|1|2|5|10>")
             }
-            if let multiplier = Int(tokens[1]) {
+            if let multiplier = Double(tokens[1]) {
                 return .speed(multiplier: multiplier)
             } else {
-                return .unknown(text: "speed multiplier must be a number: speed <1|2|5|10>")
+                return .unknown(text: "speed multiplier must be a number: speed <0.1|0.25|0.5|1|2|5|10>")
             }
 
         case "status":
@@ -123,6 +126,9 @@ struct CommandParser {
                 return .help(topic: topic)
             }
             return .help(topic: nil)
+
+        case "quit", "exit":
+            return .quit
 
         default:
             return .unknown(text: trimmed)

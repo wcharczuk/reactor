@@ -18,6 +18,9 @@ final class GameLoop {
     /// Base timestep (seconds) - 1/60th of a second.
     private let baseTimestep: Double = 1.0 / 60.0
 
+    /// Accumulator for fractional time acceleration (handles < 1x speeds).
+    private var timeAccumulator: Double = 0.0
+
     /// Substep counter for scheduling subsystem updates.
     private var substepCounter: Int = 0
 
@@ -58,11 +61,10 @@ final class GameLoop {
     ///
     /// - Parameter dt: Real-time delta since last frame (typically ~1/60s).
     func update(dt: Double) {
-        let accelerationFactor = state.timeAcceleration
-        let substepsThisFrame = max(accelerationFactor, 1)
-
-        for _ in 0..<substepsThisFrame {
+        timeAccumulator += state.timeAcceleration
+        while timeAccumulator >= 1.0 {
             performSubstep()
+            timeAccumulator -= 1.0
         }
     }
 
@@ -71,6 +73,9 @@ final class GameLoop {
     /// Execute a single simulation substep at the base timestep.
     private func performSubstep() {
         let dt = baseTimestep
+
+        // --- Rod movement (every substep, before reactivity) ---
+        Reactivity.rampRods(state: state, dt: dt)
 
         // --- Reactivity update (every substep, before neutronics) ---
         Reactivity.update(state: state)
@@ -128,20 +133,20 @@ final class GameLoop {
 
     // MARK: - Time Acceleration Control
 
-    /// Set time acceleration factor. Valid values: 1, 2, 5, 10.
-    func setTimeAcceleration(_ factor: Int) {
-        let validFactors = [1, 2, 5, 10]
-        if validFactors.contains(factor) {
+    private static let speedLevels: [Double] = [0.1, 0.25, 0.5, 1, 2, 5, 10]
+
+    /// Set time acceleration factor.
+    func setTimeAcceleration(_ factor: Double) {
+        if Self.speedLevels.contains(factor) {
             state.timeAcceleration = factor
         }
     }
 
     /// Increase time acceleration to the next level.
     func increaseTimeAcceleration() {
-        let levels = [1, 2, 5, 10]
-        if let currentIndex = levels.firstIndex(of: state.timeAcceleration) {
-            if currentIndex < levels.count - 1 {
-                state.timeAcceleration = levels[currentIndex + 1]
+        if let currentIndex = Self.speedLevels.firstIndex(of: state.timeAcceleration) {
+            if currentIndex < Self.speedLevels.count - 1 {
+                state.timeAcceleration = Self.speedLevels[currentIndex + 1]
             }
         } else {
             state.timeAcceleration = 1
@@ -150,10 +155,9 @@ final class GameLoop {
 
     /// Decrease time acceleration to the previous level.
     func decreaseTimeAcceleration() {
-        let levels = [1, 2, 5, 10]
-        if let currentIndex = levels.firstIndex(of: state.timeAcceleration) {
+        if let currentIndex = Self.speedLevels.firstIndex(of: state.timeAcceleration) {
             if currentIndex > 0 {
-                state.timeAcceleration = levels[currentIndex - 1]
+                state.timeAcceleration = Self.speedLevels[currentIndex - 1]
             }
         } else {
             state.timeAcceleration = 1
@@ -174,9 +178,10 @@ final class GameLoop {
 
     // MARK: - Operator Actions
 
-    /// Start a primary coolant pump.
+    /// Start a primary coolant pump (ramps to rated RPM).
     func startPrimaryPump(_ index: Int) {
         guard index >= 0 && index < 4 else { return }
+        state.primaryPumps[index].targetRPM = CANDUConstants.pumpRatedRPM
         state.primaryPumps[index].running = true
         state.primaryPumps[index].tripped = false
     }
@@ -184,15 +189,15 @@ final class GameLoop {
     /// Trip (emergency stop) a primary coolant pump.
     func tripPrimaryPump(_ index: Int) {
         guard index >= 0 && index < 4 else { return }
+        state.primaryPumps[index].rpmAtTrip = state.primaryPumps[index].rpm
         state.primaryPumps[index].tripped = true
         state.primaryPumps[index].tripTime = state.elapsedTime
     }
 
-    /// Stop a primary coolant pump (graceful).
+    /// Stop a primary coolant pump (graceful ramp-down).
     func stopPrimaryPump(_ index: Int) {
         guard index >= 0 && index < 4 else { return }
-        state.primaryPumps[index].running = false
-        state.primaryPumps[index].tripped = false
+        state.primaryPumps[index].targetRPM = 0.0
     }
 
     /// Set adjuster rod bank position (0 = fully inserted, 1 = fully withdrawn).
@@ -250,17 +255,18 @@ final class GameLoop {
         state.feedPumps[index].running = false
     }
 
-    /// Start a cooling water pump.
+    /// Start a cooling water pump (ramps to rated RPM).
     func startCoolingWaterPump(_ index: Int) {
         guard index >= 0 && index < 2 else { return }
+        state.coolingWaterPumps[index].targetRPM = CANDUConstants.pumpRatedRPM
         state.coolingWaterPumps[index].running = true
         state.coolingWaterPumps[index].tripped = false
     }
 
-    /// Stop a cooling water pump.
+    /// Stop a cooling water pump (graceful ramp-down).
     func stopCoolingWaterPump(_ index: Int) {
         guard index >= 0 && index < 2 else { return }
-        state.coolingWaterPumps[index].running = false
+        state.coolingWaterPumps[index].targetRPM = 0.0
     }
 
     /// Start a diesel generator.

@@ -40,7 +40,7 @@ final class CommandDispatcher {
         self.intellisense = intellisense
         appendOutput("CANDU-6 REACTOR CONTROL SYSTEM v1.0")
         appendOutput("Reactor is in COLD SHUTDOWN. Order: COMMENCE REACTOR STARTUP.")
-        appendOutput("Try: start tertiary.pump.1    (start cooling water)")
+        appendOutput("Try: start aux.diesel.*    (start both diesel generators)")
         appendOutput("Type 'help startup' for full procedure. Tab for auto-complete.")
     }
 
@@ -78,6 +78,9 @@ final class CommandDispatcher {
 
         case .help(let topic):
             response = handleHelp(topic: topic)
+
+        case .quit:
+            response = "QUIT"
 
         case .unknown(let text):
             if text.isEmpty {
@@ -135,19 +138,20 @@ final class CommandDispatcher {
         // Apply the value to the reactor state
         switch path {
 
-        // --- Core: Adjuster Rods ---
-        case "core.adjuster-rods.bank-a.position":
-            state.adjusterPositions[0] = value
-            return "OK: bank-a position = \(formatValue(value))"
-        case "core.adjuster-rods.bank-b.position":
-            state.adjusterPositions[1] = value
-            return "OK: bank-b position = \(formatValue(value))"
-        case "core.adjuster-rods.bank-c.position":
-            state.adjusterPositions[2] = value
-            return "OK: bank-c position = \(formatValue(value))"
-        case "core.adjuster-rods.bank-d.position":
-            state.adjusterPositions[3] = value
-            return "OK: bank-d position = \(formatValue(value))"
+        // --- Core: Adjuster Rods (motor-driven, ~60s full stroke) ---
+        // User pos: 0=withdrawn(out), 100=inserted(in). Internal: 0=inserted, 1=withdrawn.
+        case "core.adjuster-rods.bank-a.pos":
+            state.adjusterTargetPositions[0] = 1.0 - value / 100.0
+            return "OK: bank-a target = \(formatValue(value))"
+        case "core.adjuster-rods.bank-b.pos":
+            state.adjusterTargetPositions[1] = 1.0 - value / 100.0
+            return "OK: bank-b target = \(formatValue(value))"
+        case "core.adjuster-rods.bank-c.pos":
+            state.adjusterTargetPositions[2] = 1.0 - value / 100.0
+            return "OK: bank-c target = \(formatValue(value))"
+        case "core.adjuster-rods.bank-d.pos":
+            state.adjusterTargetPositions[3] = 1.0 - value / 100.0
+            return "OK: bank-d target = \(formatValue(value))"
 
         // --- Core: Zone Controllers ---
         case "core.zone-controllers.zone-1.fill":
@@ -163,24 +167,26 @@ final class CommandDispatcher {
         case "core.zone-controllers.zone-6.fill":
             return setZoneFill(index: 5, zone: 6, value: value)
 
-        // --- Core: MCA ---
-        case "core.mca.1.position":
-            state.mcaPositions[0] = value
-            return "OK: MCA-1 position = \(formatValue(value))"
-        case "core.mca.2.position":
-            state.mcaPositions[1] = value
-            return "OK: MCA-2 position = \(formatValue(value))"
+        // --- Core: MCA (motor-driven, ~30s full stroke) ---
+        // User pos: 0=withdrawn(out), 100=inserted(in). Internal: 0=inserted, 1=withdrawn.
+        case "core.mca.1.pos":
+            state.mcaTargetPositions[0] = 1.0 - value / 100.0
+            return "OK: MCA-1 target = \(formatValue(value))"
+        case "core.mca.2.pos":
+            state.mcaTargetPositions[1] = 1.0 - value / 100.0
+            return "OK: MCA-2 target = \(formatValue(value))"
 
         // --- Core: Shutoff Rods ---
-        case "core.shutoff-rods.position":
-            if state.scramActive && value < state.shutoffRodInsertionFraction {
+        case "core.shutoff-rods.pos":
+            let internal01 = value / 100.0
+            if state.scramActive && internal01 < state.shutoffRodInsertionFraction {
                 return "ERROR: Cannot withdraw shutoff rods during SCRAM."
             }
-            state.shutoffRodInsertionFraction = value
-            state.shutoffRodsInserted = value > 0.5
-            if value < 0.01 {
+            state.shutoffRodInsertionFraction = internal01
+            state.shutoffRodsInserted = internal01 > 0.5
+            if value < 1 {
                 return "OK: Shutoff rods WITHDRAWN"
-            } else if value > 0.99 {
+            } else if value > 99 {
                 return "OK: Shutoff rods FULLY INSERTED"
             } else {
                 return "OK: Shutoff rods insertion = \(formatValue(value))"
@@ -188,13 +194,13 @@ final class CommandDispatcher {
 
         // --- Primary: Pumps ---
         case "primary.pump.1.rpm":
-            return setPumpRPM(pumpIndex: 0, pumpNumber: 1, value: value, pumps: &state.primaryPumps)
+            return setPrimaryPumpRPM(pumpIndex: 0, pumpNumber: 1, value: value)
         case "primary.pump.2.rpm":
-            return setPumpRPM(pumpIndex: 1, pumpNumber: 2, value: value, pumps: &state.primaryPumps)
+            return setPrimaryPumpRPM(pumpIndex: 1, pumpNumber: 2, value: value)
         case "primary.pump.3.rpm":
-            return setPumpRPM(pumpIndex: 2, pumpNumber: 3, value: value, pumps: &state.primaryPumps)
+            return setPrimaryPumpRPM(pumpIndex: 2, pumpNumber: 3, value: value)
         case "primary.pump.4.rpm":
-            return setPumpRPM(pumpIndex: 3, pumpNumber: 4, value: value, pumps: &state.primaryPumps)
+            return setPrimaryPumpRPM(pumpIndex: 3, pumpNumber: 4, value: value)
 
         // --- Secondary: Turbine Governor ---
         case "secondary.turbine.governor":
@@ -220,20 +226,28 @@ final class CommandDispatcher {
         return "OK: Zone-\(zone) fill = \(formatValue(value))%"
     }
 
-    private func setPumpRPM(pumpIndex: Int, pumpNumber: Int, value: Double, pumps: inout [PumpState]) -> String {
-        guard pumpIndex < pumps.count else {
+    private func setPrimaryPumpRPM(pumpIndex: Int, pumpNumber: Int, value: Double) -> String {
+        guard pumpIndex < state.primaryPumps.count else {
             return "ERROR: Pump \(pumpNumber) does not exist."
         }
-        if pumps[pumpIndex].tripped {
+        if state.primaryPumps[pumpIndex].tripped {
             return "ERROR: Pump \(pumpNumber) is tripped. Reset required."
         }
-        pumps[pumpIndex].rpm = value
-        if value > 0 && !pumps[pumpIndex].running {
-            pumps[pumpIndex].running = true
-        } else if value == 0 {
-            pumps[pumpIndex].running = false
+        if value > 0 && !state.hasPowerSource {
+            return "ERROR: No power source. Start a diesel generator first."
         }
-        return "OK: Pump \(pumpNumber) target RPM = \(formatValue(value))"
+        let warning = predictOverloadWarning(additionalPumpPower: CANDUConstants.pumpMotorPower, newRPM: value, oldRPM: state.primaryPumps[pumpIndex].targetRPM, ratedRPM: CANDUConstants.pumpRatedRPM, wasRunning: state.primaryPumps[pumpIndex].running)
+        state.primaryPumps[pumpIndex].targetRPM = value
+        if value > 0 && !state.primaryPumps[pumpIndex].running {
+            state.primaryPumps[pumpIndex].running = true
+        } else if value == 0 && state.primaryPumps[pumpIndex].rpm == 0 {
+            state.primaryPumps[pumpIndex].running = false
+        }
+        var result = "OK: Pump \(pumpNumber) target RPM = \(formatValue(value))"
+        if let warning = warning {
+            result += "\n\(warning)"
+        }
+        return result
     }
 
     private func setTertiaryPumpRPM(pumpIndex: Int, pumpNumber: Int, value: Double) -> String {
@@ -243,13 +257,43 @@ final class CommandDispatcher {
         if state.coolingWaterPumps[pumpIndex].tripped {
             return "ERROR: Cooling water pump \(pumpNumber) is tripped."
         }
-        state.coolingWaterPumps[pumpIndex].rpm = value
+        if value > 0 && !state.hasPowerSource {
+            return "ERROR: No power source. Start a diesel generator first."
+        }
+        let warning = predictOverloadWarning(additionalPumpPower: CANDUConstants.coolingWaterPumpPower, newRPM: value, oldRPM: state.coolingWaterPumps[pumpIndex].targetRPM, ratedRPM: CANDUConstants.pumpRatedRPM, wasRunning: state.coolingWaterPumps[pumpIndex].running)
+        state.coolingWaterPumps[pumpIndex].targetRPM = value
         if value > 0 && !state.coolingWaterPumps[pumpIndex].running {
             state.coolingWaterPumps[pumpIndex].running = true
-        } else if value == 0 {
+        } else if value == 0 && state.coolingWaterPumps[pumpIndex].rpm == 0 {
             state.coolingWaterPumps[pumpIndex].running = false
         }
-        return "OK: Cooling pump \(pumpNumber) target RPM = \(formatValue(value))"
+        var result = "OK: Cooling pump \(pumpNumber) target RPM = \(formatValue(value))"
+        if let warning = warning {
+            result += "\n\(warning)"
+        }
+        return result
+    }
+
+    /// Predict whether a pump RPM change will cause an electrical overload.
+    /// Returns a warning string if overload is predicted, nil otherwise.
+    private func predictOverloadWarning(additionalPumpPower: Double, newRPM: Double, oldRPM: Double, ratedRPM: Double, wasRunning: Bool) -> String? {
+        // Only relevant when off-grid
+        guard !state.generatorConnected else { return nil }
+
+        // Compute the change in power draw
+        let newFraction = newRPM / ratedRPM
+        let newPower = additionalPumpPower * pow(newFraction, 3.0)
+        let oldFraction = wasRunning ? oldRPM / ratedRPM : 0.0
+        let oldPower = wasRunning ? additionalPumpPower * pow(oldFraction, 3.0) : 0.0
+        let delta = newPower - oldPower
+
+        let projectedLoad = state.emergencyServiceLoad + delta
+        let capacity = state.availableElectricalCapacity
+
+        if projectedLoad > capacity {
+            return "WARNING: Load \(String(format: "%.1f", projectedLoad)) MW exceeds diesel capacity \(String(format: "%.1f", capacity)) MW — overload trip in \(Int(CANDUConstants.dieselOverloadTripDelay))s!"
+        }
+        return nil
     }
 
     // MARK: - GET
@@ -271,15 +315,29 @@ final class CommandDispatcher {
     private func readSingleValue(path: String) -> String {
         switch path {
 
-        // --- Core: Adjuster Rods ---
-        case "core.adjuster-rods.bank-a.position":
-            return "bank-a position = \(formatValue(state.adjusterPositions[0]))"
-        case "core.adjuster-rods.bank-b.position":
-            return "bank-b position = \(formatValue(state.adjusterPositions[1]))"
-        case "core.adjuster-rods.bank-c.position":
-            return "bank-c position = \(formatValue(state.adjusterPositions[2]))"
-        case "core.adjuster-rods.bank-d.position":
-            return "bank-d position = \(formatValue(state.adjusterPositions[3]))"
+        // --- Core: Read-only ---
+        case "core.thermal-power":
+            return "Thermal power = \(formatValue(state.thermalPower)) MW"
+        case "core.power-fraction":
+            return "Power fraction = \(formatValue(state.thermalPowerFraction * 100.0))%"
+        case "core.fuel-temp":
+            return "Fuel temp = \(formatValue(state.fuelTemp)) degC"
+        case "core.cladding-temp":
+            return "Cladding temp = \(formatValue(state.claddingTemp)) degC"
+        case "core.reactivity":
+            return "Total reactivity = \(formatValue(state.totalReactivity)) mk"
+        case "core.xenon-reactivity":
+            return "Xenon reactivity = \(formatValue(state.xenonReactivity)) mk"
+
+        // --- Core: Adjuster Rods (user pos: 0=out, 100=in; internal: 0=in, 1=out) ---
+        case "core.adjuster-rods.bank-a.pos":
+            return rodGetString("bank-a", (1.0 - state.adjusterPositions[0]) * 100.0, (1.0 - state.adjusterTargetPositions[0]) * 100.0)
+        case "core.adjuster-rods.bank-b.pos":
+            return rodGetString("bank-b", (1.0 - state.adjusterPositions[1]) * 100.0, (1.0 - state.adjusterTargetPositions[1]) * 100.0)
+        case "core.adjuster-rods.bank-c.pos":
+            return rodGetString("bank-c", (1.0 - state.adjusterPositions[2]) * 100.0, (1.0 - state.adjusterTargetPositions[2]) * 100.0)
+        case "core.adjuster-rods.bank-d.pos":
+            return rodGetString("bank-d", (1.0 - state.adjusterPositions[3]) * 100.0, (1.0 - state.adjusterTargetPositions[3]) * 100.0)
 
         // --- Core: Zone Controllers ---
         case "core.zone-controllers.zone-1.fill":
@@ -295,15 +353,15 @@ final class CommandDispatcher {
         case "core.zone-controllers.zone-6.fill":
             return "zone-6 fill = \(formatValue(state.zoneControllerFills[5]))%"
 
-        // --- Core: MCA ---
-        case "core.mca.1.position":
-            return "MCA-1 position = \(formatValue(state.mcaPositions[0]))"
-        case "core.mca.2.position":
-            return "MCA-2 position = \(formatValue(state.mcaPositions[1]))"
+        // --- Core: MCA (user pos: 0=out, 100=in; internal: 0=in, 1=out) ---
+        case "core.mca.1.pos":
+            return rodGetString("MCA-1", (1.0 - state.mcaPositions[0]) * 100.0, (1.0 - state.mcaTargetPositions[0]) * 100.0)
+        case "core.mca.2.pos":
+            return rodGetString("MCA-2", (1.0 - state.mcaPositions[1]) * 100.0, (1.0 - state.mcaTargetPositions[1]) * 100.0)
 
         // --- Core: Shutoff Rods ---
-        case "core.shutoff-rods.position":
-            return "Shutoff rods insertion = \(formatValue(state.shutoffRodInsertionFraction))"
+        case "core.shutoff-rods.pos":
+            return "Shutoff rods pos = \(formatValue(state.shutoffRodInsertionFraction * 100.0))"
 
         // --- Primary ---
         case "primary.pump.1.rpm":
@@ -324,11 +382,11 @@ final class CommandDispatcher {
             return "Primary flow rate = \(formatValue(state.primaryFlowRate)) kg/s"
 
         // --- Secondary ---
-        case "secondary.feed-pump.1.state":
+        case "secondary.feed-pump.1.auto":
             return "Feed pump 1: \(state.feedPumps[0].running ? "RUNNING" : "STOPPED")"
-        case "secondary.feed-pump.2.state":
+        case "secondary.feed-pump.2.auto":
             return "Feed pump 2: \(state.feedPumps[1].running ? "RUNNING" : "STOPPED")"
-        case "secondary.feed-pump.3.state":
+        case "secondary.feed-pump.3.auto":
             return "Feed pump 3: \(state.feedPumps[2].running ? "RUNNING" : "STOPPED")"
         case "secondary.turbine.governor":
             return "Turbine governor = \(formatValue(state.turbineGovernor))"
@@ -349,18 +407,48 @@ final class CommandDispatcher {
         case "secondary.sg.1.pressure", "secondary.sg.2.pressure",
              "secondary.sg.3.pressure", "secondary.sg.4.pressure":
             return "Steam pressure = \(formatValue(state.steamPressure)) MPa"
+        case "secondary.steam-pressure":
+            return "Steam pressure = \(formatValue(state.steamPressure)) MPa"
+        case "secondary.steam-temp":
+            return "Steam temp = \(formatValue(state.steamTemp)) degC"
+        case "secondary.steam-flow":
+            return "Steam flow = \(formatValue(state.steamFlow)) kg/s"
+        case "secondary.feedwater-temp":
+            return "Feedwater temp = \(formatValue(state.feedwaterTemp)) degC"
+
+        // --- Electrical ---
+        case "electrical.gross-power":
+            return "Gross power = \(formatValue(state.grossPower)) MW(e)"
+        case "electrical.net-power":
+            return "Net power = \(formatValue(state.netPower)) MW(e)"
+        case "electrical.frequency":
+            return "Generator freq = \(formatValue(state.generatorFrequency)) Hz"
+        case "electrical.grid-connected":
+            return "Grid connected = \(state.generatorConnected ? "YES" : "NO")"
+        case "electrical.station-service":
+            return "Effective electrical load = \(formatValue(state.effectiveElectricalLoad)) MW"
+        case "electrical.diesel-capacity":
+            return "Available diesel capacity = \(formatValue(state.availableDieselCapacity)) MW"
 
         // --- Tertiary ---
         case "tertiary.pump.1.rpm":
             return "Cooling pump 1 RPM = \(formatValue(state.coolingWaterPumps[0].rpm))"
         case "tertiary.pump.2.rpm":
             return "Cooling pump 2 RPM = \(formatValue(state.coolingWaterPumps[1].rpm))"
+        case "tertiary.cooling-water-flow":
+            return "Cooling water flow = \(formatValue(state.coolingWaterFlow)) kg/s"
 
         // --- Auxiliary ---
         case "aux.diesel.1.state":
-            return "Diesel 1: \(state.dieselGenerators[0].running ? "RUNNING" : "STOPPED")\(state.dieselGenerators[0].available ? " (AVAILABLE)" : "")"
+            let fuelPct1 = String(format: "%.0f", state.dieselGenerators[0].fuelLevel * 100.0)
+            return "Diesel 1: \(state.dieselGenerators[0].running ? "RUNNING" : "STOPPED")\(state.dieselGenerators[0].available ? " (AVAILABLE)" : "") \u{2014} Fuel: \(fuelPct1)%"
         case "aux.diesel.2.state":
-            return "Diesel 2: \(state.dieselGenerators[1].running ? "RUNNING" : "STOPPED")\(state.dieselGenerators[1].available ? " (AVAILABLE)" : "")"
+            let fuelPct2 = String(format: "%.0f", state.dieselGenerators[1].fuelLevel * 100.0)
+            return "Diesel 2: \(state.dieselGenerators[1].running ? "RUNNING" : "STOPPED")\(state.dieselGenerators[1].available ? " (AVAILABLE)" : "") \u{2014} Fuel: \(fuelPct2)%"
+        case "aux.diesel.1.fuel":
+            return "Diesel 1 fuel = \(String(format: "%.1f", state.dieselGenerators[0].fuelLevel * 100.0))%"
+        case "aux.diesel.2.fuel":
+            return "Diesel 2 fuel = \(String(format: "%.1f", state.dieselGenerators[1].fuelLevel * 100.0))%"
 
         default:
             return "ERROR: Cannot read \(path)"
@@ -389,6 +477,12 @@ final class CommandDispatcher {
     }
 
     private func startComponent(path: String) -> String {
+        // Pumps require a power source (diesel or main generator)
+        let needsPower = path != "aux.diesel.1.state" && path != "aux.diesel.2.state"
+        if needsPower && !state.hasPowerSource {
+            return "ERROR: No power source. Start a diesel generator first."
+        }
+
         switch path {
         case "aux.diesel.1.state":
             if state.dieselGenerators[0].running {
@@ -406,68 +500,27 @@ final class CommandDispatcher {
             state.dieselGenerators[1].startTime = state.elapsedTime
             return "OK: Diesel generator 2 starting (warmup: \(Int(CANDUConstants.dieselStartTime))s)"
 
-        case "secondary.feed-pump.1.state":
+        case "secondary.feed-pump.1.auto":
             state.feedPumps[0].running = true
             return "OK: Feed pump 1 started."
-        case "secondary.feed-pump.2.state":
+        case "secondary.feed-pump.2.auto":
             state.feedPumps[1].running = true
             return "OK: Feed pump 2 started."
-        case "secondary.feed-pump.3.state":
+        case "secondary.feed-pump.3.auto":
             state.feedPumps[2].running = true
             return "OK: Feed pump 3 started."
 
-        // Allow starting pumps via their .rpm path
-        case "primary.pump.1.rpm":
-            return startPrimaryPump(index: 0, number: 1)
-        case "primary.pump.2.rpm":
-            return startPrimaryPump(index: 1, number: 2)
-        case "primary.pump.3.rpm":
-            return startPrimaryPump(index: 2, number: 3)
-        case "primary.pump.4.rpm":
-            return startPrimaryPump(index: 3, number: 4)
+        // Pumps — redirect to 'set' command
+        case "primary.pump.1.rpm", "primary.pump.2.rpm",
+             "primary.pump.3.rpm", "primary.pump.4.rpm":
+            return "Use 'set \(path) 1500' to start a pump."
 
-        case "tertiary.pump.1.rpm":
-            return startTertiaryPump(index: 0, number: 1)
-        case "tertiary.pump.2.rpm":
-            return startTertiaryPump(index: 1, number: 2)
+        case "tertiary.pump.1.rpm", "tertiary.pump.2.rpm":
+            return "Use 'set \(path) 1500' to start a pump."
 
         default:
             return "ERROR: Cannot start \(path)"
         }
-    }
-
-    private func startPrimaryPump(index: Int, number: Int) -> String {
-        guard index < state.primaryPumps.count else {
-            return "ERROR: Primary pump \(number) does not exist."
-        }
-        if state.primaryPumps[index].tripped {
-            return "ERROR: Primary pump \(number) is tripped. Reset required."
-        }
-        if state.primaryPumps[index].running {
-            return "Primary pump \(number) already running."
-        }
-        state.primaryPumps[index].running = true
-        if state.primaryPumps[index].rpm == 0 {
-            state.primaryPumps[index].rpm = CANDUConstants.pumpRatedRPM
-        }
-        return "OK: Primary pump \(number) started at \(formatValue(state.primaryPumps[index].rpm)) RPM."
-    }
-
-    private func startTertiaryPump(index: Int, number: Int) -> String {
-        guard index < state.coolingWaterPumps.count else {
-            return "ERROR: Cooling pump \(number) does not exist."
-        }
-        if state.coolingWaterPumps[index].tripped {
-            return "ERROR: Cooling pump \(number) is tripped."
-        }
-        if state.coolingWaterPumps[index].running {
-            return "Cooling pump \(number) already running."
-        }
-        state.coolingWaterPumps[index].running = true
-        if state.coolingWaterPumps[index].rpm == 0 {
-            state.coolingWaterPumps[index].rpm = CANDUConstants.pumpRatedRPM
-        }
-        return "OK: Cooling pump \(number) started at \(formatValue(state.coolingWaterPumps[index].rpm)) RPM."
     }
 
     private func handleStop(path: String) -> String {
@@ -502,44 +555,25 @@ final class CommandDispatcher {
             state.dieselGenerators[1].power = 0.0
             return "OK: Diesel generator 2 stopped."
 
-        case "secondary.feed-pump.1.state":
+        case "secondary.feed-pump.1.auto":
             state.feedPumps[0].running = false
             state.feedPumps[0].flowRate = 0.0
             return "OK: Feed pump 1 stopped."
-        case "secondary.feed-pump.2.state":
+        case "secondary.feed-pump.2.auto":
             state.feedPumps[1].running = false
             state.feedPumps[1].flowRate = 0.0
             return "OK: Feed pump 2 stopped."
-        case "secondary.feed-pump.3.state":
+        case "secondary.feed-pump.3.auto":
             state.feedPumps[2].running = false
             state.feedPumps[2].flowRate = 0.0
             return "OK: Feed pump 3 stopped."
 
-        case "primary.pump.1.rpm":
-            state.primaryPumps[0].running = false
-            state.primaryPumps[0].rpm = 0.0
-            return "OK: Primary pump 1 stopped."
-        case "primary.pump.2.rpm":
-            state.primaryPumps[1].running = false
-            state.primaryPumps[1].rpm = 0.0
-            return "OK: Primary pump 2 stopped."
-        case "primary.pump.3.rpm":
-            state.primaryPumps[2].running = false
-            state.primaryPumps[2].rpm = 0.0
-            return "OK: Primary pump 3 stopped."
-        case "primary.pump.4.rpm":
-            state.primaryPumps[3].running = false
-            state.primaryPumps[3].rpm = 0.0
-            return "OK: Primary pump 4 stopped."
+        case "primary.pump.1.rpm", "primary.pump.2.rpm",
+             "primary.pump.3.rpm", "primary.pump.4.rpm":
+            return "Use 'set \(path) 0' to stop a pump."
 
-        case "tertiary.pump.1.rpm":
-            state.coolingWaterPumps[0].running = false
-            state.coolingWaterPumps[0].rpm = 0.0
-            return "OK: Cooling pump 1 stopped."
-        case "tertiary.pump.2.rpm":
-            state.coolingWaterPumps[1].running = false
-            state.coolingWaterPumps[1].rpm = 0.0
-            return "OK: Cooling pump 2 stopped."
+        case "tertiary.pump.1.rpm", "tertiary.pump.2.rpm":
+            return "Use 'set \(path) 0' to stop a pump."
 
         default:
             return "ERROR: Cannot stop \(path)"
@@ -575,13 +609,18 @@ final class CommandDispatcher {
 
     // MARK: - SPEED
 
-    private func handleSpeed(multiplier: Int) -> String {
-        let validSpeeds = [1, 2, 5, 10]
+    private func handleSpeed(multiplier: Double) -> String {
+        let validSpeeds: [Double] = [0.1, 0.25, 0.5, 1, 2, 5, 10]
         guard validSpeeds.contains(multiplier) else {
-            return "ERROR: Speed must be one of: \(validSpeeds.map(String.init).joined(separator: ", "))"
+            return "ERROR: Speed must be one of: \(validSpeeds.map { formatSpeed($0) }.joined(separator: ", "))"
         }
         state.timeAcceleration = multiplier
-        return "OK: Time acceleration = \(multiplier)x"
+        return "OK: Time acceleration = \(formatSpeed(multiplier))x"
+    }
+
+    private func formatSpeed(_ speed: Double) -> String {
+        if speed == Double(Int(speed)) { return "\(Int(speed))" }
+        return "\(speed)"
     }
 
     // MARK: - STATUS
@@ -596,10 +635,21 @@ final class CommandDispatcher {
         let pFlow = String(format: "%.0f", state.primaryFlowRate)
         let scramStatus = state.scramActive ? "ACTIVE" : "Normal"
 
-        return """
+        var result = """
         Power: \(power)% | Thermal: \(thermal) MW(th) | Gross: \(gross) MW(e) | Net: \(net) MW(e)
         Fuel: \(fuelT) degC | Pressure: \(pPressure) MPa | Flow: \(pFlow) kg/s | SCRAM: \(scramStatus)
         """
+
+        // Show diesel fuel status when any diesel is running
+        let runningDiesels = state.dieselGenerators.enumerated().filter { $0.element.running }
+        if !runningDiesels.isEmpty {
+            let dgInfo = runningDiesels.map { (i, dg) in
+                "DG-\(i+1): \(String(format: "%.0f", dg.fuelLevel * 100))%"
+            }.joined(separator: " | ")
+            result += "\nDiesel fuel: \(dgInfo)"
+        }
+
+        return result
     }
 
     // MARK: - HELP
@@ -607,9 +657,10 @@ final class CommandDispatcher {
     private func handleHelp(topic: String?) -> String {
         guard let topic = topic else {
             return """
-            Commands: set, get, start, stop, scram, view, speed, status, help
+            Commands: set, get, start, stop, scram, view, speed, status, help, quit
+            Pumps use 'set' to control RPM. 'start/stop' for diesels and feed pumps.
             Type 'help startup' for startup procedure. Type 'help paths' for all noun paths.
-            Use Tab for auto-completion.
+            Use Tab for auto-completion. PageUp/PageDown to scroll output.
             """
         }
 
@@ -705,6 +756,50 @@ final class CommandDispatcher {
     }
 
     // MARK: - Formatting
+
+    private func rodGetString(_ name: String, _ current: Double, _ target: Double) -> String {
+        let pos = formatValue(current)
+        if abs(current - target) > 0.001 {
+            let dir = target < current ? "withdrawing" : "inserting"
+            return "\(name) position = \(pos) (\(dir) → \(formatValue(target)))"
+        }
+        return "\(name) position = \(pos)"
+    }
+
+    /// Returns just the current numeric value for a settable path (used by intellisense range hints).
+    func currentValueString(for path: String) -> String? {
+        switch path {
+        case "core.adjuster-rods.bank-a.pos": return formatValue((1.0 - state.adjusterPositions[0]) * 100.0)
+        case "core.adjuster-rods.bank-b.pos": return formatValue((1.0 - state.adjusterPositions[1]) * 100.0)
+        case "core.adjuster-rods.bank-c.pos": return formatValue((1.0 - state.adjusterPositions[2]) * 100.0)
+        case "core.adjuster-rods.bank-d.pos": return formatValue((1.0 - state.adjusterPositions[3]) * 100.0)
+        case "core.zone-controllers.zone-1.fill": return formatValue(state.zoneControllerFills[0])
+        case "core.zone-controllers.zone-2.fill": return formatValue(state.zoneControllerFills[1])
+        case "core.zone-controllers.zone-3.fill": return formatValue(state.zoneControllerFills[2])
+        case "core.zone-controllers.zone-4.fill": return formatValue(state.zoneControllerFills[3])
+        case "core.zone-controllers.zone-5.fill": return formatValue(state.zoneControllerFills[4])
+        case "core.zone-controllers.zone-6.fill": return formatValue(state.zoneControllerFills[5])
+        case "core.mca.1.pos": return formatValue((1.0 - state.mcaPositions[0]) * 100.0)
+        case "core.mca.2.pos": return formatValue((1.0 - state.mcaPositions[1]) * 100.0)
+        case "core.shutoff-rods.pos": return formatValue(state.shutoffRodInsertionFraction * 100.0)
+        case "secondary.turbine.governor": return formatValue(state.turbineGovernor)
+        default:
+            // Primary/tertiary pumps
+            if path.hasPrefix("primary.pump.") && path.hasSuffix(".rpm") {
+                let idx = Int(path.dropFirst("primary.pump.".count).dropLast(".rpm".count)) ?? 0
+                if idx >= 1 && idx <= state.primaryPumps.count {
+                    return formatValue(state.primaryPumps[idx - 1].rpm)
+                }
+            }
+            if path.hasPrefix("tertiary.pump.") && path.hasSuffix(".rpm") {
+                let idx = Int(path.dropFirst("tertiary.pump.".count).dropLast(".rpm".count)) ?? 0
+                if idx >= 1 && idx <= state.coolingWaterPumps.count {
+                    return formatValue(state.coolingWaterPumps[idx - 1].rpm)
+                }
+            }
+            return nil
+        }
+    }
 
     private func formatValue(_ value: Double) -> String {
         if value == value.rounded() && abs(value) < 10000 {

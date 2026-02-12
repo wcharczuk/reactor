@@ -5,6 +5,7 @@ enum AuxiliarySystems {
 
     static func step(state: ReactorState, dt: Double) {
         updateDieselGenerators(state: state, dt: dt)
+        checkDieselOverload(state: state, dt: dt)
         updateModerator(state: state, dt: dt)
         updateHeavyWaterInventory(state: state, dt: dt)
     }
@@ -13,14 +14,15 @@ enum AuxiliarySystems {
 
     private static func updateDieselGenerators(state: ReactorState, dt: Double) {
         for i in 0..<2 {
-            if state.dieselGenerators[i].startTime > 0 && !state.dieselGenerators[i].available {
+            if state.dieselGenerators[i].startTime >= 0 && !state.dieselGenerators[i].available {
                 // Diesel is in warmup phase
                 let elapsed = state.elapsedTime - state.dieselGenerators[i].startTime
                 if elapsed >= CANDUConstants.dieselStartTime {
-                    // Warmup complete - diesel is now available
+                    // Warmup complete - diesel is now available and auto-loaded
                     state.dieselGenerators[i].running = true
                     state.dieselGenerators[i].available = true
-                    state.dieselGenerators[i].power = 0.0 // Available but not yet loaded
+                    state.dieselGenerators[i].loaded = true
+                    state.dieselGenerators[i].power = 0.0
                 }
             }
 
@@ -31,9 +33,41 @@ enum AuxiliarySystems {
                     state.dieselGenerators[i].power + rampRate * dt,
                     CANDUConstants.dieselPower
                 )
+
+                // Consume fuel proportional to power output
+                if state.dieselGenerators[i].power > 0 {
+                    let fuelRate = (state.dieselGenerators[i].power / CANDUConstants.dieselPower) * dt / CANDUConstants.dieselFuelDuration
+                    state.dieselGenerators[i].fuelLevel = max(state.dieselGenerators[i].fuelLevel - fuelRate, 0.0)
+
+                    // Low fuel warning at 10%
+                    if state.dieselGenerators[i].fuelLevel < 0.10 && !state.dieselGenerators[i].lowFuelWarned {
+                        state.dieselGenerators[i].lowFuelWarned = true
+                        state.addAlarm(message: "DIESEL \(i + 1) FUEL LOW (<10%)", severity: .warning)
+                    }
+
+                    // Out of fuel — stop diesel
+                    if state.dieselGenerators[i].fuelLevel <= 0 {
+                        state.dieselGenerators[i].running = false
+                        state.dieselGenerators[i].available = false
+                        state.dieselGenerators[i].loaded = false
+                        state.dieselGenerators[i].power = 0.0
+                        state.dieselGenerators[i].startTime = -1.0
+                        state.addAlarm(message: "DIESEL \(i + 1) FUEL EXHAUSTED - engine stopped", severity: .alarm)
+                    }
+                }
             } else if state.dieselGenerators[i].available && !state.dieselGenerators[i].loaded {
-                // Running but unloaded - at idle
+                // Running but unloaded - at idle (minimal fuel consumption)
+                let idleFuelRate = 0.05 * dt / CANDUConstants.dieselFuelDuration
+                state.dieselGenerators[i].fuelLevel = max(state.dieselGenerators[i].fuelLevel - idleFuelRate, 0.0)
                 state.dieselGenerators[i].power = 0.0
+
+                if state.dieselGenerators[i].fuelLevel <= 0 {
+                    state.dieselGenerators[i].running = false
+                    state.dieselGenerators[i].available = false
+                    state.dieselGenerators[i].loaded = false
+                    state.dieselGenerators[i].startTime = -1.0
+                    state.addAlarm(message: "DIESEL \(i + 1) FUEL EXHAUSTED - engine stopped", severity: .alarm)
+                }
             }
 
             // If diesel was shut down
@@ -44,6 +78,77 @@ enum AuxiliarySystems {
                 state.dieselGenerators[i].startTime = -1.0
             }
         }
+    }
+
+    // MARK: - Diesel Overload
+
+    private static func checkDieselOverload(state: ReactorState, dt: Double) {
+        // Only relevant when off-grid and running on diesels
+        guard !state.generatorConnected else {
+            state.dieselOverloadStartTime = -1.0
+            return
+        }
+
+        // Check if any diesels are actually available
+        let hasDiesel = state.dieselGenerators.contains { $0.available && $0.loaded }
+        guard hasDiesel else {
+            state.dieselOverloadStartTime = -1.0
+            return
+        }
+
+        if state.isElectricalOverloaded {
+            if state.dieselOverloadStartTime < 0 {
+                // Start overload timer
+                state.dieselOverloadStartTime = state.elapsedTime
+                state.addAlarm(message: "DIESEL OVERLOAD - load exceeds capacity", severity: .warning)
+            } else {
+                // Check if sustained overload exceeds trip delay
+                let overloadDuration = state.elapsedTime - state.dieselOverloadStartTime
+                if overloadDuration >= CANDUConstants.dieselOverloadTripDelay {
+                    tripAllDiesels(state: state)
+                }
+            }
+        } else {
+            // Load within capacity, clear timer
+            state.dieselOverloadStartTime = -1.0
+        }
+    }
+
+    /// Trip all diesel generators due to overload. Cascading loss of all pumps.
+    private static func tripAllDiesels(state: ReactorState) {
+        // Trip all diesels
+        for i in 0..<state.dieselGenerators.count {
+            state.dieselGenerators[i].running = false
+            state.dieselGenerators[i].available = false
+            state.dieselGenerators[i].loaded = false
+            state.dieselGenerators[i].power = 0.0
+            state.dieselGenerators[i].startTime = -1.0
+        }
+
+        state.addAlarm(message: "DIESEL GENERATORS TRIPPED - OVERLOAD", severity: .trip)
+        state.addAlarm(message: "STATION BLACKOUT", severity: .trip)
+
+        // Trip all primary pumps (coastdown logic handles the rest)
+        for i in 0..<state.primaryPumps.count where state.primaryPumps[i].running {
+            state.primaryPumps[i].rpmAtTrip = state.primaryPumps[i].rpm
+            state.primaryPumps[i].tripped = true
+            state.primaryPumps[i].tripTime = state.elapsedTime
+        }
+
+        // Trip all cooling water pumps
+        for i in 0..<state.coolingWaterPumps.count where state.coolingWaterPumps[i].running {
+            state.coolingWaterPumps[i].rpmAtTrip = state.coolingWaterPumps[i].rpm
+            state.coolingWaterPumps[i].tripped = true
+            state.coolingWaterPumps[i].tripTime = state.elapsedTime
+        }
+
+        // Stop all feed pumps (binary on/off, no coastdown)
+        for i in 0..<state.feedPumps.count {
+            state.feedPumps[i].running = false
+            state.feedPumps[i].flowRate = 0.0
+        }
+
+        state.dieselOverloadStartTime = -1.0
     }
 
     // MARK: - Moderator System

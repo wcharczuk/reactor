@@ -27,26 +27,162 @@ final class Intellisense {
     private let pathEntries: [PathEntry]
 
     /// All valid verbs.
-    private let validVerbs: [String] = ["set", "get", "start", "stop", "scram", "view", "speed", "status", "help"]
+    private let validVerbs: [String] = ["set", "get", "start", "stop", "scram", "view", "speed", "status", "help", "quit", "exit"]
 
     /// Valid view screen names.
     private let viewScreens: [String] = ["overview", "core", "primary", "secondary", "electrical", "alarms"]
 
     /// Valid speed multipliers.
-    private let validSpeeds: [String] = ["1", "2", "5", "10"]
+    private let validSpeeds: [String] = ["0.1", "0.25", "0.5", "1", "2", "5", "10"]
+
+    /// Component help descriptions keyed by path prefix (longest prefix wins).
+    private let componentDescriptions: [(prefix: String, text: String)] = [
+        ("core.adjuster-rods", """
+         ADJUSTER RODS — Fine Reactivity Control
+         4 banks (A-D) of stainless steel rods normally withdrawn from the core.
+         Each bank worth ~3.75 mk. Inserted/withdrawn to compensate for xenon
+         transients and make small reactivity adjustments during load-following.
+         Path: core.adjuster-rods.bank-{a,b,c,d}.pos (0=out, 100=in)
+         """),
+        ("core.zone-controllers", """
+         ZONE CONTROLLERS — Spatial Flux Shaping
+         6 vertical compartments in the moderator filled with light water (H2O).
+         Light water absorbs neutrons, so raising fill level reduces local flux.
+         Total reactivity worth ~1.5 mk. Used to flatten the flux profile and
+         prevent xenon oscillations across the core.
+         Path: core.zone-controllers.zone-{1..6}.fill (0-100%)
+         """),
+        ("core.mca", """
+         MECHANICAL CONTROL ABSORBERS (MCA)
+         2 motor-driven absorber rods for coarse reactivity control.
+         Each worth ~5 mk. Used during large power maneuvers where adjuster
+         rods alone provide insufficient reactivity span. Slower than adjusters
+         but provide a larger reactivity effect.
+         Path: core.mca.{1,2}.pos (0=out, 100=in)
+         """),
+        ("core.shutoff-rods", """
+         SHUTOFF RODS — Emergency Shutdown (SDS-1)
+         Gravity-driven spring-assisted shutdown rods held out of core by
+         electromagnets. On SCRAM signal all rods drop into the core within
+         ~2 seconds. Combined worth ~80 mk — enough to shut down the reactor
+         from any operating state.
+         Path: core.shutoff-rods.pos (0=out, 100=fully inserted)
+         """),
+        ("core", """
+         CANDU-6 REACTOR CORE
+         380 horizontal fuel channels in a calandria vessel filled with heavy
+         water (D2O) moderator at ~70 degC. Each channel holds 12 fuel bundles
+         of natural uranium. Rated thermal power: 2064 MW(th). The core uses
+         on-power refueling — no need to shut down for fuel changes.
+         """),
+        ("primary", """
+         PRIMARY HEAT TRANSPORT SYSTEM
+         Pressurized heavy water (D2O) coolant circulated by 4 pumps through
+         the fuel channels. Operating pressure ~10 MPa. Inlet ~265 degC,
+         outlet ~310 degC. Two figure-of-eight loops, each with 2 pumps and
+         2 steam generators. Total flow ~7700 kg/s at full power.
+         """),
+        ("secondary.turbine", """
+         STEAM TURBINE & GOVERNOR VALVE
+         Single-shaft turbine-generator rated ~680 MW(e) gross. The governor
+         valve controls steam admission. At 1800 RPM (60 Hz) the generator
+         is at synchronous speed for grid connection.
+         Path: secondary.turbine.governor (0=closed, 1=open)
+         """),
+        ("secondary.feed-pump", """
+         FEEDWATER PUMPS
+         3 motor-driven pumps that return condensed water to the steam
+         generators. Each draws ~3 MW. Binary start/stop operation. At least
+         one feed pump must run to maintain steam generator levels.
+         Path: start/stop secondary.feed-pump.{1,2,3}.auto
+         """),
+        ("secondary.sg", """
+         STEAM GENERATORS
+         4 vertical U-tube heat exchangers. Primary D2O (~310 degC) flows
+         through the tubes; secondary light water boils on the shell side
+         producing steam at ~4.7 MPa (~260 degC). Level is controlled by
+         feedwater flow. Low level triggers a reactor trip.
+         """),
+        ("secondary.condenser", """
+         CONDENSER
+         Shell-and-tube heat exchanger below the turbine. Exhaust steam
+         condenses on tubes cooled by tertiary (lake) water. Maintains
+         vacuum (~5 kPa absolute) to maximize turbine efficiency.
+         """),
+        ("secondary", """
+         SECONDARY (STEAM) SYSTEM
+         Light water loop: 4 steam generators produce steam that drives the
+         turbine-generator. Exhaust steam is condensed and returned by feed
+         pumps. Includes turbine, condenser, 3 feed pumps, and the steam
+         generator inventory.
+         """),
+        ("tertiary", """
+         TERTIARY (COOLING WATER) SYSTEM
+         Lake water circulated by 2 pumps through the condenser to remove
+         waste heat. This is the ultimate heat sink for the plant.
+         Path: tertiary.pump.{1,2}.rpm
+         """),
+        ("electrical", """
+         ELECTRICAL SYSTEMS
+         Generator output (~680 MW gross), grid connection via main breaker,
+         and station service loads (~70 MW on-grid). When off-grid, essential
+         loads (~2 MW) run on diesel backup. Grid sync requires turbine at
+         1800 RPM (60 Hz).
+         """),
+        ("aux.diesel", """
+         DIESEL GENERATORS — Emergency Backup Power
+         2 diesel generators, 5 MW each. Require ~30 second warmup before
+         accepting load. Provide emergency power when off-grid. Overload
+         protection trips after 5 seconds above rated capacity — manage
+         pump startups carefully to avoid tripping the diesels.
+         Path: start/stop aux.diesel.{1,2}
+         """),
+    ]
 
     // MARK: - Init
 
     init() {
         var entries: [PathEntry] = []
 
+        // --- Core: Read-only ---
+        entries.append(PathEntry(
+            path: "core.thermal-power",
+            description: "Core thermal power (MW, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "core.power-fraction",
+            description: "Thermal power as fraction of rated (read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "core.fuel-temp",
+            description: "Average fuel temperature (degC, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "core.cladding-temp",
+            description: "Average cladding temperature (degC, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "core.reactivity",
+            description: "Total reactivity (mk, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "core.xenon-reactivity",
+            description: "Xenon-135 reactivity worth (mk, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+
         // --- Core: Adjuster Rods ---
         for bank in ["bank-a", "bank-b", "bank-c", "bank-d"] {
             entries.append(PathEntry(
-                path: "core.adjuster-rods.\(bank).position",
-                description: "Adjuster rod \(bank) position (0.0=inserted, 1.0=withdrawn)",
+                path: "core.adjuster-rods.\(bank).pos",
+                description: "Adjuster rod \(bank) position (0=out, 100=in)",
                 valueType: .double,
-                range: 0.0...1.0
+                range: 0.0...100.0
             ))
         }
 
@@ -63,19 +199,19 @@ final class Intellisense {
         // --- Core: MCA ---
         for unit in 1...2 {
             entries.append(PathEntry(
-                path: "core.mca.\(unit).position",
-                description: "Mechanical control absorber \(unit) position (0.0=inserted, 1.0=withdrawn)",
+                path: "core.mca.\(unit).pos",
+                description: "Mechanical control absorber \(unit) position (0=out, 100=in)",
                 valueType: .double,
-                range: 0.0...1.0
+                range: 0.0...100.0
             ))
         }
 
         // --- Core: Shutoff rods ---
         entries.append(PathEntry(
-            path: "core.shutoff-rods.position",
-            description: "Shutoff rod insertion (0.0=withdrawn, 1.0=fully inserted)",
+            path: "core.shutoff-rods.pos",
+            description: "Shutoff rod insertion (0=out, 100=in)",
             valueType: .double,
-            range: 0.0...1.0
+            range: 0.0...100.0
         ))
 
         // --- Primary: Pumps ---
@@ -119,7 +255,7 @@ final class Intellisense {
         // --- Secondary: Feed Pumps ---
         for pump in 1...3 {
             entries.append(PathEntry(
-                path: "secondary.feed-pump.\(pump).state",
+                path: "secondary.feed-pump.\(pump).auto",
                 description: "Feed water pump \(pump) (use start/stop)",
                 valueType: .toggle,
                 range: nil
@@ -171,6 +307,60 @@ final class Intellisense {
             ))
         }
 
+        // --- Secondary: Read-only system values ---
+        entries.append(PathEntry(
+            path: "secondary.steam-pressure",
+            description: "Main steam header pressure (MPa, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "secondary.steam-temp",
+            description: "Main steam temperature (degC, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "secondary.steam-flow",
+            description: "Total steam flow rate (kg/s, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "secondary.feedwater-temp",
+            description: "Feedwater temperature (degC, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+
+        // --- Electrical ---
+        entries.append(PathEntry(
+            path: "electrical.gross-power",
+            description: "Gross electrical output (MW, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "electrical.net-power",
+            description: "Net electrical output (MW, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "electrical.frequency",
+            description: "Generator frequency (Hz, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "electrical.grid-connected",
+            description: "Generator grid synchronization (read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "electrical.station-service",
+            description: "Current effective electrical load (MW, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+        entries.append(PathEntry(
+            path: "electrical.diesel-capacity",
+            description: "Available diesel generator capacity (MW, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+
         // --- Tertiary: Pumps ---
         for pump in 1...2 {
             entries.append(PathEntry(
@@ -181,12 +371,25 @@ final class Intellisense {
             ))
         }
 
+        // --- Tertiary: Read-only ---
+        entries.append(PathEntry(
+            path: "tertiary.cooling-water-flow",
+            description: "Total cooling water flow (kg/s, read-only)",
+            valueType: .readOnly, range: nil
+        ))
+
         // --- Auxiliary: Diesel Generators ---
         for dg in 1...2 {
             entries.append(PathEntry(
                 path: "aux.diesel.\(dg).state",
                 description: "Diesel generator \(dg) (use start/stop)",
                 valueType: .toggle,
+                range: nil
+            ))
+            entries.append(PathEntry(
+                path: "aux.diesel.\(dg).fuel",
+                description: "Diesel generator \(dg) fuel level (%, read-only)",
+                valueType: .readOnly,
                 range: nil
             ))
         }
@@ -200,7 +403,7 @@ final class Intellisense {
     ///
     /// The input may be a partial verb, a verb with a partial path, or a verb
     /// with a partial path and partial value.
-    func completions(for partialInput: String) -> [String] {
+    func completions(for partialInput: String, valueLookup: ((String) -> String?)? = nil) -> [String] {
         let trimmed = partialInput.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else {
             return validVerbs
@@ -239,15 +442,18 @@ final class Intellisense {
         case "help":
             if tokens.count < 2 || (tokens.count == 2 && !partialInput.hasSuffix(" ")) {
                 let partial = tokens.count >= 2 ? tokens[1].lowercased() : ""
-                let topics = ["set", "get", "start", "stop", "scram", "view", "speed", "startup", "paths"]
-                return topics
+                let commandTopics = ["set", "get", "start", "stop", "scram", "view", "speed", "startup", "paths"]
+                let componentTopics = componentDescriptions.map { $0.prefix }
+                let allTopics = commandTopics + componentTopics
+                return Array(Set(allTopics
                     .filter { $0.hasPrefix(partial) }
                     .map { "help \($0)" }
+                )).sorted()
             }
             return []
 
         case "set", "get":
-            return pathCompletions(verb: verb, tokens: tokens, partialInput: partialInput, includeSettable: verb == "set")
+            return pathCompletions(verb: verb, tokens: tokens, partialInput: partialInput, includeSettable: verb == "set", valueLookup: valueLookup)
 
         case "start", "stop":
             return togglePathCompletions(verb: verb, tokens: tokens, partialInput: partialInput)
@@ -261,13 +467,13 @@ final class Intellisense {
     }
 
     /// Generate completions for set/get commands (paths with possible glob).
-    private func pathCompletions(verb: String, tokens: [String], partialInput: String, includeSettable: Bool) -> [String] {
+    private func pathCompletions(verb: String, tokens: [String], partialInput: String, includeSettable: Bool, valueLookup: ((String) -> String?)? = nil) -> [String] {
         // When the user has finished typing a path (space after it, or already typing a value),
         // show the valid range instead of more path completions.
         if verb == "set" && tokens.count >= 2 {
             let typedPath = tokens[1].lowercased()
             let isTypingValue = tokens.count >= 3 || partialInput.hasSuffix(" ")
-            if isTypingValue, let hint = rangeHint(for: typedPath) {
+            if isTypingValue, let hint = rangeHint(for: typedPath, valueLookup: valueLookup) {
                 return [hint]
             }
         }
@@ -282,10 +488,10 @@ final class Intellisense {
             partialPath = tokens.count >= 2 ? tokens[1].lowercased() : ""
         }
 
-        // For "set", filter to writable paths. For "get", show all paths.
+        // For "set", filter to writable paths only. For "get", show all paths.
         let filteredEntries: [PathEntry]
         if includeSettable {
-            filteredEntries = pathEntries.filter { $0.valueType != .toggle }
+            filteredEntries = pathEntries.filter { $0.valueType != .toggle && $0.valueType != .readOnly }
         } else {
             filteredEntries = pathEntries
         }
@@ -304,16 +510,17 @@ final class Intellisense {
     }
 
     /// Returns a range hint string for a completed path (exact or glob).
-    private func rangeHint(for path: String) -> String? {
+    private func rangeHint(for path: String, valueLookup: ((String) -> String?)? = nil) -> String? {
         // Exact match
         if let entry = pathEntries.first(where: { $0.path == path }), let range = entry.range {
-            return "Value: \(formatRange(range))"
+            let current = valueLookup?(path) ?? "?"
+            return "Range: \(formatRange(range))  Current: \(current)"
         }
         // Glob match — find first matching entry with a range
         if path.contains("*") {
             for entry in pathEntries {
                 if globMatchesSimple(pattern: path, candidate: entry.path), let range = entry.range {
-                    return "Value: \(formatRange(range))"
+                    return "Range: \(formatRange(range))"
                 }
             }
         }
@@ -336,7 +543,7 @@ final class Intellisense {
         return true
     }
 
-    /// Generate completions for start/stop commands (toggle paths only).
+    /// Generate completions for start/stop commands (startable/stoppable components only).
     private func togglePathCompletions(verb: String, tokens: [String], partialInput: String) -> [String] {
         let partialPath: String
         if tokens.count >= 2 && !partialInput.hasSuffix(" ") {
@@ -345,30 +552,26 @@ final class Intellisense {
             partialPath = ""
         }
 
-        let toggleEntries = pathEntries.filter { $0.valueType == .toggle }
-        let matchingPaths = toggleEntries
-            .filter { $0.path.hasPrefix(partialPath) }
-            .map { "\(verb) \($0.path)" }
+        var results: [String] = []
 
-        // Also include component paths for start/stop of pumps (by removing .rpm suffix)
-        var pumpPaths: [String] = []
-        for entry in pathEntries where entry.path.hasSuffix(".rpm") {
-            let basePath = String(entry.path.dropLast(4)) // remove ".rpm"
-            if basePath.hasPrefix(partialPath) {
-                pumpPaths.append("\(verb) \(basePath)")
+        // Toggle entries (strip .state suffix for cleaner completions)
+        for entry in pathEntries where entry.valueType == .toggle {
+            let cleanPath = entry.path.hasSuffix(".state") ? String(entry.path.dropLast(6)) : entry.path
+            if cleanPath.hasPrefix(partialPath) {
+                results.append("\(verb) \(cleanPath)")
             }
         }
 
-        return Array(Set(matchingPaths + pumpPaths)).sorted()
+        return Array(Set(results)).sorted()
     }
 
-    /// Generate glob path suggestions (e.g., "core.adjuster-rods.bank-*.position").
+    /// Generate glob path suggestions (e.g., "core.adjuster-rods.bank-*.pos").
     private func expandableGlobPaths(for verb: String, partialPath: String, includeSettable: Bool) -> [String] {
         var globs: Set<String> = []
 
         let filteredEntries: [PathEntry]
         if includeSettable {
-            filteredEntries = pathEntries.filter { $0.valueType != .toggle }
+            filteredEntries = pathEntries.filter { $0.valueType != .toggle && $0.valueType != .readOnly }
         } else {
             filteredEntries = pathEntries
         }
@@ -406,16 +609,16 @@ final class Intellisense {
 
         switch lowered {
         case "set":
-            return "SET <path> <value> - Set a system parameter. Example: set core.adjuster-rods.bank-a.position 0.5"
+            return "SET <path> <value> - Set a system parameter. Example: set core.adjuster-rods.bank-a.pos 0"
 
         case "get":
             return "GET <path> - Read a system parameter. Example: get primary.pump.1.rpm"
 
         case "start":
-            return "START <path> - Start a component. Example: start aux.diesel.1"
+            return "START <path> - Start a component. Example: start aux.diesel.1\nFor pumps, use 'set <path>.rpm <value>' instead."
 
         case "stop":
-            return "STOP <path> - Stop a component. Example: stop primary.pump.1"
+            return "STOP <path> - Stop a component. Example: stop aux.diesel.1\nFor pumps, use 'set <path>.rpm 0' instead."
 
         case "scram":
             return "SCRAM - Emergency shutdown. Fully inserts all shutoff rods immediately."
@@ -424,7 +627,7 @@ final class Intellisense {
             return "VIEW <screen> - Switch display. Screens: overview, core, primary, secondary, electrical, alarms"
 
         case "speed":
-            return "SPEED <multiplier> - Set time acceleration. Valid: 1, 2, 5, 10"
+            return "SPEED <multiplier> - Set time acceleration. Valid: 0.1, 0.25, 0.5, 1, 2, 5, 10"
 
         case "status":
             return "STATUS - Display summary of all major reactor parameters."
@@ -432,16 +635,26 @@ final class Intellisense {
         case "startup":
             return """
             REACTOR STARTUP PROCEDURE:
-            1. Start cooling water     start tertiary.pump.1 ; start tertiary.pump.2
-            2. Start primary pumps      start primary.pump.1  (repeat for 2, 3, 4)
-            3. Start feed pump          start secondary.feed-pump.1
-            4. Withdraw shutoff rods    set core.shutoff-rods.position 0
-            5. Withdraw adjuster rods   set core.adjuster-rods.bank-a.position 1
-               (repeat for bank-b, bank-c, bank-d or use bank-*)
-            6. Lower zone controller    set core.zone-controllers.zone-*.fill 50
-            7. Monitor for criticality  view core
-            8. Open turbine governor    set secondary.turbine.governor 0.5
-            Raise power gradually. Use 'speed 5' to accelerate time.
+            Phase 1 — Bootstrap on diesel (10 MW capacity):
+            1. Start both diesels       start aux.diesel.*
+            2. (Wait 30s for warmup)    speed 5
+            3. CW pump at 10% RPM       set tertiary.pump.1.rpm 150
+            4. Primary pumps at 10%     set primary.pump.1.rpm 150
+               (repeat for pump 2)      set primary.pump.2.rpm 150
+            5. Start feed pump (~3 MW)  start secondary.feed-pump.1.auto
+            6. Withdraw shutoff rods    set core.shutoff-rods.pos 0
+            Phase 2 — Achieve criticality:
+            7. Withdraw adjuster rods   set core.adjuster-rods.bank-*.pos 0
+            8. Lower zone controllers   set core.zone-controllers.zone-*.fill 50
+            9. Monitor for criticality  view core
+            Phase 3 — Power ascension:
+            10. Open turbine governor   set secondary.turbine.governor 0.5
+            11. Sync generator to grid when power > 5%
+            12. Ramp pumps with power:  25% → 500 RPM, 50% → 1000 RPM,
+                75% → 1200 RPM, 100% → 1500 RPM (rated)
+            Low RPM on diesel conserves power (cube law). After grid sync
+            you have unlimited electrical supply to ramp pumps fully.
+            Use 'speed 5' to accelerate time. PageUp/PageDown to scroll.
             """
 
         case "paths":
@@ -468,6 +681,10 @@ final class Intellisense {
                 }
                 return "\(entry.path) - \(entry.description).\(rangeStr)"
             }
+            // Check component help (prefix match, longest prefix wins)
+            if let text = componentHelp(for: lowered) {
+                return text
+            }
             return nil
         }
     }
@@ -480,6 +697,21 @@ final class Intellisense {
     /// Returns all registered path strings.
     var allPaths: [String] {
         return pathEntries.map { $0.path }
+    }
+
+    // MARK: - Component Help
+
+    /// Returns a component help description for the given input, matching the longest prefix.
+    private func componentHelp(for input: String) -> String? {
+        var bestMatch: (prefix: String, text: String)?
+        for entry in componentDescriptions {
+            if input == entry.prefix || input.hasPrefix(entry.prefix + ".") {
+                if bestMatch == nil || entry.prefix.count > bestMatch!.prefix.count {
+                    bestMatch = entry
+                }
+            }
+        }
+        return bestMatch?.text
     }
 
     // MARK: - Formatting

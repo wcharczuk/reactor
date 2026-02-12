@@ -7,21 +7,40 @@ enum TerminalColor: Equatable, Hashable {
     case normal      // Standard green text
     case bright      // Bright green (highlighted)
     case dim         // Dim green (secondary info)
-    case alarm       // Amber/red for alarms
+    case warning     // Yellow — approaching limits
+    case alarm       // Amber — alarm messages
+    case danger      // Red — critical/out-of-spec
     case input       // Slightly different green for input area
     case background  // Near-black with slight green tint
 
     /// RGB components as a tuple of Floats (0.0 - 1.0).
     var rgb: (r: Float, g: Float, b: Float) {
         switch self {
-        case .normal:     return (0.0, 0.7, 0.0)
-        case .bright:     return (0.0, 1.0, 0.0)
-        case .dim:        return (0.0, 0.35, 0.0)
-        case .alarm:      return (1.0, 0.3, 0.0)
-        case .input:      return (0.0, 0.9, 0.2)
-        case .background: return (0.0, 0.02, 0.0)
+        case .normal:     return (0.0, 0.82, 0.0)
+        case .bright:     return (0.1, 1.0, 0.1)
+        case .dim:        return (0.0, 0.50, 0.0)
+        case .warning:    return (1.0, 0.85, 0.0)
+        case .alarm:      return (1.0, 0.5, 0.0)
+        case .danger:     return (1.0, 0.15, 0.1)
+        case .input:      return (0.1, 0.95, 0.2)
+        case .background: return (0.0, 0.03, 0.0)
         }
     }
+}
+
+// MARK: - Core Diagram Data
+
+/// Data needed to render the raster core cross-section diagram.
+struct CoreDiagramData {
+    let gridX: Int          // Top-left column in character grid
+    let gridY: Int          // Top-left row in character grid
+    let gridWidth: Int      // Width in character cells
+    let gridHeight: Int     // Height in character cells
+    let adjusterPositions: [Double]     // 4 values, 0=inserted 1=withdrawn
+    let mcaPositions: [Double]          // 2 values, 0=inserted 1=withdrawn
+    let zoneFills: [Double]             // 6 values, 0-100%
+    let shutoffInsertion: Double        // 0=withdrawn, 1=fully inserted
+    let scramActive: Bool
 }
 
 // MARK: - Terminal Cell
@@ -41,19 +60,25 @@ struct TerminalCell {
 
 // MARK: - Terminal Buffer
 
-/// A 320x96 character cell grid that serves as the virtual CRT screen buffer.
+/// A 213x70 character cell grid that serves as the virtual CRT screen buffer.
 /// Cells are stored in a flat array in row-major order for performance.
 final class TerminalBuffer {
 
     // MARK: Constants
 
-    static let width: Int = 320
-    static let height: Int = 96
+    static let width: Int = 213
+    static let height: Int = 70
 
     // MARK: Storage
 
     /// Flat array of cells, row-major: index = y * width + x
     private(set) var cells: [TerminalCell]
+
+    /// Optional raster diagram data for the core view.
+    var coreDiagram: CoreDiagramData?
+
+    /// Optional compact raster diagram data for the overview.
+    var overviewDiagram: CoreDiagramData?
 
     // MARK: Init
 
@@ -85,6 +110,8 @@ final class TerminalBuffer {
     /// Fill the entire buffer with blank cells.
     func clear() {
         cells = [TerminalCell](repeating: .blank, count: TerminalBuffer.width * TerminalBuffer.height)
+        coreDiagram = nil
+        overviewDiagram = nil
     }
 
     // MARK: Put Character

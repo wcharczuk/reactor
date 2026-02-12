@@ -62,8 +62,8 @@ enum SafetySystem {
         previousNeutronDensity = state.neutronDensity
         previousTime = state.elapsedTime
 
-        // 3. Low primary pressure (only when at power)
-        if state.neutronDensity > 0.05 && state.primaryPressure < lowPrimaryPressureSetpoint {
+        // 3. Low primary pressure (bypassed during startup — only above 15% power)
+        if state.thermalPowerFraction > 0.15 && state.primaryPressure < lowPrimaryPressureSetpoint {
             initiateScram(state: state, reason: "LOW PHT PRESSURE (<\(lowPrimaryPressureSetpoint) MPa)")
             return
         }
@@ -74,8 +74,8 @@ enum SafetySystem {
             return
         }
 
-        // 5. Low primary flow (only when at power)
-        if state.neutronDensity > 0.05 {
+        // 5. Low primary flow (bypassed during startup — only above 15% power)
+        if state.thermalPowerFraction > 0.15 {
             let flowFraction = state.primaryFlowRate / CANDUConstants.totalRatedFlow
             if flowFraction < lowPrimaryFlowSetpoint {
                 initiateScram(state: state, reason: "LOW PHT FLOW (<\(Int(lowPrimaryFlowSetpoint * 100))%)")
@@ -85,7 +85,7 @@ enum SafetySystem {
 
         // 6. Low SG level (any SG)
         for i in 0..<CANDUConstants.sgCount {
-            if state.sgLevels[i] < lowSGLevelSetpoint && state.neutronDensity > 0.05 {
+            if state.sgLevels[i] < lowSGLevelSetpoint && state.thermalPowerFraction > 0.15 {
                 initiateScram(state: state, reason: "LOW SG \(i + 1) LEVEL (<\(Int(lowSGLevelSetpoint))%)")
                 return
             }
@@ -108,7 +108,7 @@ enum SafetySystem {
         state.shutdownTime = state.elapsedTime
 
         // Snap time acceleration to 1x
-        state.timeAcceleration = 1
+        state.timeAcceleration = 1.0
 
         // Add alarm
         let alarm = Alarm(

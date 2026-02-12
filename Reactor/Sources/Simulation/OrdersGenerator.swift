@@ -38,7 +38,7 @@ final class OrdersGenerator {
     // MARK: - Initialization
 
     init() {
-        currentPhase = .waitingForCriticality
+        currentPhase = .prepareForStartup
         phaseEntryTime = 0.0
         orderIssued = false
         timeAtTargetPower = 0.0
@@ -50,7 +50,7 @@ final class OrdersGenerator {
     func update(state: ReactorState, dt: Double) {
         // Don't issue new orders during SCRAM
         if state.scramActive {
-            state.currentOrder = "*** SCRAM ACTIVE - STABILIZE PLANT ***"
+            state.currentOrder = "SCRAM ACTIVE - STABILIZE PLANT"
             return
         }
 
@@ -203,13 +203,7 @@ final class OrdersGenerator {
         orderIssued = false
         timeAtTargetPower = 0.0
 
-        // Add notification alarm for new order
-        let alarm = Alarm(
-            time: state.elapsedTime,
-            message: "NEW ORDER RECEIVED",
-            acknowledged: false
-        )
-        state.alarms.append(alarm)
+        // Order change is visible in the Orders box — no alarm needed
     }
 
     /// Reset the orders generator to initial state.

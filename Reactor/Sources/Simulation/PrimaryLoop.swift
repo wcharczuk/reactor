@@ -15,27 +15,32 @@ enum PrimaryLoop {
 
     // MARK: - Pump Dynamics
 
+    /// Primary pump ramp rate: 50 RPM/s (reaches 1500 RPM in 30s).
+    private static let primaryPumpRampRate: Double = 50.0
+
     private static func updatePumps(state: ReactorState, dt: Double) {
         for i in 0..<4 {
             if state.primaryPumps[i].tripped {
-                // Pump is coasting down - exponential decay
+                // Pump is coasting down - exponential decay from actual RPM at trip
                 let timeSinceTrip = state.elapsedTime - state.primaryPumps[i].tripTime
                 if timeSinceTrip > 0 {
-                    let rpmAtTrip = CANDUConstants.pumpRatedRPM
-                    state.primaryPumps[i].rpm = rpmAtTrip * exp(-timeSinceTrip / CANDUConstants.pumpCoastdownTau)
+                    state.primaryPumps[i].rpm = state.primaryPumps[i].rpmAtTrip * exp(-timeSinceTrip / CANDUConstants.pumpCoastdownTau)
                     if state.primaryPumps[i].rpm < 1.0 {
                         state.primaryPumps[i].rpm = 0.0
                         state.primaryPumps[i].running = false
                     }
                 }
             } else if state.primaryPumps[i].running {
-                // Pump is running - ramp toward rated RPM
-                let rampRate = CANDUConstants.pumpRatedRPM / 30.0 // reach rated in ~30s
-                if state.primaryPumps[i].rpm < CANDUConstants.pumpRatedRPM {
-                    state.primaryPumps[i].rpm = min(
-                        state.primaryPumps[i].rpm + rampRate * dt,
-                        CANDUConstants.pumpRatedRPM
-                    )
+                // Ramp toward targetRPM
+                let target = state.primaryPumps[i].targetRPM
+                if state.primaryPumps[i].rpm < target {
+                    state.primaryPumps[i].rpm = min(state.primaryPumps[i].rpm + primaryPumpRampRate * dt, target)
+                } else if state.primaryPumps[i].rpm > target {
+                    state.primaryPumps[i].rpm = max(state.primaryPumps[i].rpm - primaryPumpRampRate * dt, target)
+                }
+                // Auto-stop when ramped down to zero
+                if target == 0 && state.primaryPumps[i].rpm == 0 {
+                    state.primaryPumps[i].running = false
                 }
             } else {
                 // Pump is off - rpm decays

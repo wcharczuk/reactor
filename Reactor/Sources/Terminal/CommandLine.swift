@@ -136,6 +136,100 @@ final class TerminalCommandLine {
         cursorPosition += chars.count
     }
 
+    // MARK: - Reverse Incremental Search (C-r)
+
+    /// Whether we're currently in reverse-i-search mode.
+    private(set) var isSearching: Bool = false
+
+    /// The current search query string.
+    private(set) var searchQuery: String = ""
+
+    /// The index of the current match in history (nil = no match).
+    private var searchMatchIndex: Int? = nil
+
+    /// The matched command text, or nil if no match.
+    var searchMatch: String? {
+        guard let idx = searchMatchIndex else { return nil }
+        return history[idx]
+    }
+
+    /// Enter reverse-i-search mode.
+    func beginSearch() {
+        guard !isSearching else {
+            // Already searching — C-r again means find next
+            searchNext()
+            return
+        }
+        isSearching = true
+        searchQuery = ""
+        searchMatchIndex = nil
+        savedInput = currentText
+    }
+
+    /// Add a character to the search query and find a match.
+    func searchInsertCharacter(_ char: Character) {
+        searchQuery.append(char)
+        // Search from current match position backward
+        let startIndex = searchMatchIndex ?? history.count
+        findMatch(from: startIndex - 1)
+    }
+
+    /// Remove last character from search query.
+    func searchDeleteBackward() {
+        guard !searchQuery.isEmpty else { return }
+        searchQuery.removeLast()
+        if searchQuery.isEmpty {
+            searchMatchIndex = nil
+        } else {
+            // Re-search from the end
+            findMatch(from: history.count - 1)
+        }
+    }
+
+    /// Find the next (older) match for the current query.
+    func searchNext() {
+        guard !searchQuery.isEmpty else { return }
+        let startIndex = (searchMatchIndex ?? history.count) - 1
+        findMatch(from: startIndex)
+    }
+
+    /// Accept the current match and exit search mode.
+    func acceptSearch() {
+        if let match = searchMatch {
+            setBuffer(match)
+        }
+        exitSearchMode()
+    }
+
+    /// Cancel search and restore original input.
+    func cancelSearch() {
+        setBuffer(savedInput ?? "")
+        savedInput = nil
+        exitSearchMode()
+    }
+
+    private func exitSearchMode() {
+        isSearching = false
+        searchQuery = ""
+        searchMatchIndex = nil
+    }
+
+    private func findMatch(from startIndex: Int) {
+        let query = searchQuery.lowercased()
+        guard !query.isEmpty, startIndex >= 0 else {
+            searchMatchIndex = nil
+            return
+        }
+        for i in stride(from: min(startIndex, history.count - 1), through: 0, by: -1) {
+            if history[i].lowercased().contains(query) {
+                searchMatchIndex = i
+                setBuffer(history[i])
+                return
+            }
+        }
+        searchMatchIndex = nil
+    }
+
     // MARK: - History
 
     /// Navigate to the previous (older) command in history.

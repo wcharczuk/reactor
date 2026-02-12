@@ -83,17 +83,21 @@ fragment float4 crt_fragment(CRTVertexOut in [[stage_in]],
         phosphorMask = float3(0.5, 0.5, 1.0);
     }
     // Subtle phosphor mask effect
-    color.rgb *= mix(float3(1.0), phosphorMask, 0.15);
+    color.rgb *= mix(float3(1.0), phosphorMask, 0.04);
 
     // Scanlines
     float scanline = sin(pixelCoord.y * M_PI_F * 2.0 / (uniforms.resolution.y / uniforms.scanlineCount)) * 0.5 + 0.5;
     scanline = mix(1.0, scanline, uniforms.scanlineIntensity);
     color.rgb *= scanline;
 
-    // Green phosphor tint
+    // Green phosphor tint — preserve saturated source colors (warning/danger)
     float luminance = dot(color.rgb, float3(0.299, 0.587, 0.114));
     float3 greenTint = float3(uniforms.greenTintR, uniforms.greenTintG, uniforms.greenTintB);
-    color.rgb = luminance * greenTint;
+    float3 tinted = luminance * greenTint;
+    float maxC = max(color.r, max(color.g, color.b));
+    float minC = min(color.r, min(color.g, color.b));
+    float saturation = maxC > 0.001 ? (maxC - minC) / maxC : 0.0;
+    color.rgb = mix(tinted, color.rgb, saturation);
 
     // Bloom/glow - sample nearby pixels and add
     float3 bloom = float3(0.0);
@@ -104,8 +108,13 @@ fragment float4 crt_fragment(CRTVertexOut in [[stage_in]],
             if (dx == 0 && dy == 0) continue;
             float2 offset = float2(float(dx), float(dy)) * texelSize * bloomRadius;
             float4 s = terminalTexture.sample(texSampler, distortedUV + offset);
-            float lum = dot(s.rgb, float3(0.299, 0.587, 0.114));
-            bloom += lum * greenTint;
+            // Preserve source color hue in bloom
+            float sLum = dot(s.rgb, float3(0.299, 0.587, 0.114));
+            float3 sTinted = sLum * greenTint;
+            float sMax = max(s.r, max(s.g, s.b));
+            float sMin = min(s.r, min(s.g, s.b));
+            float sSat = sMax > 0.001 ? (sMax - sMin) / sMax : 0.0;
+            bloom += mix(sTinted, s.rgb, sSat);
         }
     }
     bloom /= 24.0;

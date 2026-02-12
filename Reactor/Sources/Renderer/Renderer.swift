@@ -27,6 +27,7 @@ class Renderer: NSObject, MTKViewDelegate {
     // Game references
     var terminalBuffer: TerminalBuffer!
     var gameLoop: GameLoop?
+    var onFrame: (() -> Void)?
 
     init?(metalView: MTKView) {
         guard let device = metalView.device ?? MTLCreateSystemDefaultDevice() else {
@@ -78,7 +79,7 @@ class Renderer: NSObject, MTKViewDelegate {
         crtPipelineState = try! device.makeRenderPipelineState(descriptor: desc)
     }
 
-    private static let quadPaddingPixels: Float = 32.0 // ~16pt on 2x retina
+    private static let quadPaddingPixels: Float = 48.0 // ~24pt on 2x retina
 
     private func setupQuadVertexBuffer() {
         // Initial buffer — rebuilt when viewport size is known
@@ -125,19 +126,19 @@ class Renderer: NSObject, MTKViewDelegate {
 
     private func setupCRTUniforms() {
         crtUniforms.curvature = 0.0
-        crtUniforms.scanlineIntensity = 0.15
+        crtUniforms.scanlineIntensity = 0.06
         crtUniforms.scanlineCount = Float(TerminalRenderer.textureHeight) / 2.0
-        crtUniforms.glowIntensity = 0.4
-        crtUniforms.vignetteStrength = 0.3
-        crtUniforms.flickerAmount = 0.3
-        crtUniforms.brightness = 1.3
+        crtUniforms.glowIntensity = 0.25
+        crtUniforms.vignetteStrength = 0.12
+        crtUniforms.flickerAmount = 0.15
+        crtUniforms.brightness = 1.5
         crtUniforms.resolution = SIMD2<Float>(Float(TerminalRenderer.textureWidth),
                                                Float(TerminalRenderer.textureHeight))
         crtUniforms.greenTintR = 0.08
         crtUniforms.greenTintG = 1.0
         crtUniforms.greenTintB = 0.08
         crtUniforms.phosphorPersistence = 0.85
-        crtUniforms.noiseAmount = 0.3
+        crtUniforms.noiseAmount = 0.1
     }
 
     // MARK: - MTKViewDelegate
@@ -151,6 +152,9 @@ class Renderer: NSObject, MTKViewDelegate {
         // Update game state
         let dt = 1.0 / Double(view.preferredFramesPerSecond)
         gameLoop?.update(dt: dt)
+
+        // Re-render terminal buffer with latest state
+        onFrame?()
 
         // Update time uniform
         crtUniforms.time = Float(CFAbsoluteTimeGetCurrent() - startTime)
@@ -180,6 +184,11 @@ class Renderer: NSObject, MTKViewDelegate {
 
         commandBuffer.present(drawable)
         commandBuffer.commit()
+    }
+
+    /// Capture the terminal texture as PNG data (pre-CRT).
+    func captureTerminalPNG() -> Data? {
+        return terminalRenderer.capturePNG()
     }
 }
 

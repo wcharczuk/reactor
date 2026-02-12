@@ -7,6 +7,8 @@ class GameMTKView: MTKView {
     var onCharacterInput: ((Character) -> Void)?
     /// Callback for special key presses
     var onSpecialKey: ((SpecialKey) -> Void)?
+    /// Callback for mouse scroll wheel (positive deltaY = scroll up)
+    var onScrollWheel: ((CGFloat) -> Void)?
 
     enum SpecialKey {
         case enter
@@ -20,12 +22,17 @@ class GameMTKView: MTKView {
         case home
         case end
         case escape
+        case pageUp
+        case pageDown
+        case outputHome   // Shift+Home — scroll to top of output
+        case outputEnd    // Shift+End — scroll to bottom of output
         // Readline
         case killToEnd
         case killToStart
         case killWordBackward
         case transposeChars
         case yankKillBuffer
+        case reverseSearch
     }
 
     override var acceptsFirstResponder: Bool { true }
@@ -50,6 +57,8 @@ class GameMTKView: MTKView {
             case "w": onSpecialKey?(.killWordBackward); return
             case "t": onSpecialKey?(.transposeChars); return
             case "y": onSpecialKey?(.yankKillBuffer); return
+            case "r": onSpecialKey?(.reverseSearch); return
+            case "g": onSpecialKey?(.escape); return  // C-g cancels like escape
             default: break
             }
         }
@@ -81,10 +90,24 @@ class GameMTKView: MTKView {
             onSpecialKey?(.rightArrow)
             return
         case 115: // Home
-            onSpecialKey?(.home)
+            if event.modifierFlags.contains(.shift) {
+                onSpecialKey?(.outputHome)
+            } else {
+                onSpecialKey?(.home)
+            }
             return
         case 119: // End
-            onSpecialKey?(.end)
+            if event.modifierFlags.contains(.shift) {
+                onSpecialKey?(.outputEnd)
+            } else {
+                onSpecialKey?(.end)
+            }
+            return
+        case 116: // Page Up
+            onSpecialKey?(.pageUp)
+            return
+        case 121: // Page Down
+            onSpecialKey?(.pageDown)
             return
         case 53: // Escape
             onSpecialKey?(.escape)
@@ -112,6 +135,10 @@ class GameMTKView: MTKView {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         return true
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        onScrollWheel?(event.scrollingDeltaY)
     }
 
     override func mouseDown(with event: NSEvent) {
