@@ -1,0 +1,440 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		00C6C8B46285B4407CE63E4D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0A1393294B19ECF327E2A0 /* Renderer.swift */; };
+		0BC4DD85D562C6BF72E5161C /* SceneRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E93F40A2461C5D66E69A3781 /* SceneRenderer.swift */; };
+		0D0DE3D8D0FF37530306FC82 /* CoreDiagramRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8382C866216A69E01D0518E2 /* CoreDiagramRenderer.swift */; };
+		20FC63885E6E71333505232A /* AdminServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7105227C05FA7C806DEF6D42 /* AdminServer.swift */; };
+		2F4451D20D126CE368F95668 /* PrimaryLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = E807C60346D633EFA8A879CB /* PrimaryLoop.swift */; };
+		3298953CDE65F4517449D41C /* GameMTKView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 350BCA28E046FFC6C768573A /* GameMTKView.swift */; };
+		485A9F27A56E4BF7B3DDAE35 /* ReactorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D89572B505942599656472 /* ReactorState.swift */; };
+		499E946E534B4667383E62C2 /* TerminalBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1265BC368E43E7B4376C43F1 /* TerminalBuffer.swift */; };
+		4B1F2B5F82109F9F60A12744 /* TerminalLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917BC9A2FEFC56EF5D9B9992 /* TerminalLayout.swift */; };
+		5534C2BFF2774137BAD938E3 /* Reactivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7ADCB8B8F2DD4623EE8824 /* Reactivity.swift */; };
+		5A375FD306C311670C8D1039 /* TerminalRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7772B4B5FB6D43A01E6A5DC /* TerminalRenderer.swift */; };
+		5B26229EB2C1F8CA4BC838B4 /* CommandParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E5B968C1309BFE840664F8F /* CommandParser.swift */; };
+		5EC4894FBE8BB9ABF27FD0BE /* CommandDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7364BF45212C570AAB3FBA16 /* CommandDispatcher.swift */; };
+		64504573A07E1D0FDD49D189 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBEF8D7A345E702E8F91D01 /* ContentView.swift */; };
+		67996E6F973ECD7A387BA5B4 /* ThermalHydraulics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9082E721344DBB828A8B7CEA /* ThermalHydraulics.swift */; };
+		682B3A22BE95B71272F2379D /* SecondaryLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = E545B521BD969809CB59E0E5 /* SecondaryLoop.swift */; };
+		82413ACBF1E004F72B07E46F /* GameLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A9BF3FC6617A3572260FFA6 /* GameLoop.swift */; };
+		9E7F69ED70F223F2F237F88F /* SceneShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 9E211F913B98FAAA203709B9 /* SceneShaders.metal */; };
+		A200F815EDDFC41470E335A5 /* OrdersGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36AAD7FEBFFC646F5CB031B0 /* OrdersGenerator.swift */; };
+		A20C0836597257B36B98BCA8 /* SafetySystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E38C5360EC8034605C0EDD5 /* SafetySystem.swift */; };
+		A823996F88365DF173A14A78 /* Neutronics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E9F43271649850889EF01D /* Neutronics.swift */; };
+		B033FD3CD39AD741DB4445B6 /* AuxiliarySystems.swift in Sources */ = {isa = PBXBuildFile; fileRef = 091FCB94E5880EAA5CF5DD1F /* AuxiliarySystems.swift */; };
+		B7ACFB95CA1E25B02D51BB66 /* CRTShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = BD2150637D91D296879D8230 /* CRTShader.metal */; };
+		D053D66012DE14CF2003A11D /* Electrical.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1805ECF2FEF6761BFA0A9E /* Electrical.swift */; };
+		DC65ABAEE4EA75E064763113 /* ReactorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 038797AADE79DAF44AA8B0A1 /* ReactorApp.swift */; };
+		DC952D2948AF5AFEEB31A63E /* MeshGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D33E2F9934119C9B719B40 /* MeshGenerator.swift */; };
+		DEF66256B25A1C83B0ED578A /* Intellisense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F333E4EE9539B208DA745B5 /* Intellisense.swift */; };
+		DF1C2163DAF2A9F75F139565 /* CommandLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E7BAE9A9857DD07019EF2B /* CommandLine.swift */; };
+		FCA90DBD2D95DB5254A6A476 /* TertiaryLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE644546BD1147BFAAE940E /* TertiaryLoop.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		038797AADE79DAF44AA8B0A1 /* ReactorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactorApp.swift; sourceTree = "<group>"; };
+		09132E4F330AA638981BD2CF /* Reactor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Reactor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		091FCB94E5880EAA5CF5DD1F /* AuxiliarySystems.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuxiliarySystems.swift; sourceTree = "<group>"; };
+		0F333E4EE9539B208DA745B5 /* Intellisense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intellisense.swift; sourceTree = "<group>"; };
+		1265BC368E43E7B4376C43F1 /* TerminalBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalBuffer.swift; sourceTree = "<group>"; };
+		1E0A1393294B19ECF327E2A0 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
+		30E9F43271649850889EF01D /* Neutronics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Neutronics.swift; sourceTree = "<group>"; };
+		350BCA28E046FFC6C768573A /* GameMTKView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMTKView.swift; sourceTree = "<group>"; };
+		36AAD7FEBFFC646F5CB031B0 /* OrdersGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersGenerator.swift; sourceTree = "<group>"; };
+		3A9BF3FC6617A3572260FFA6 /* GameLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameLoop.swift; sourceTree = "<group>"; };
+		5A7ADCB8B8F2DD4623EE8824 /* Reactivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reactivity.swift; sourceTree = "<group>"; };
+		6E38C5360EC8034605C0EDD5 /* SafetySystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetySystem.swift; sourceTree = "<group>"; };
+		7105227C05FA7C806DEF6D42 /* AdminServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminServer.swift; sourceTree = "<group>"; };
+		732B7AF2DD8BBA222CE2BC43 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
+		7364BF45212C570AAB3FBA16 /* CommandDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandDispatcher.swift; sourceTree = "<group>"; };
+		7F1805ECF2FEF6761BFA0A9E /* Electrical.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Electrical.swift; sourceTree = "<group>"; };
+		8382C866216A69E01D0518E2 /* CoreDiagramRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDiagramRenderer.swift; sourceTree = "<group>"; };
+		9082E721344DBB828A8B7CEA /* ThermalHydraulics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalHydraulics.swift; sourceTree = "<group>"; };
+		917BC9A2FEFC56EF5D9B9992 /* TerminalLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLayout.swift; sourceTree = "<group>"; };
+		9E211F913B98FAAA203709B9 /* SceneShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SceneShaders.metal; sourceTree = "<group>"; };
+		9E5B968C1309BFE840664F8F /* CommandParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandParser.swift; sourceTree = "<group>"; };
+		ADE644546BD1147BFAAE940E /* TertiaryLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TertiaryLoop.swift; sourceTree = "<group>"; };
+		BD2150637D91D296879D8230 /* CRTShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = CRTShader.metal; sourceTree = "<group>"; };
+		C0D33E2F9934119C9B719B40 /* MeshGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshGenerator.swift; sourceTree = "<group>"; };
+		C5D6F6D8F2E8AFF923B9F7E2 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
+		C7772B4B5FB6D43A01E6A5DC /* TerminalRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalRenderer.swift; sourceTree = "<group>"; };
+		CCBEF8D7A345E702E8F91D01 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		D2D89572B505942599656472 /* ReactorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactorState.swift; sourceTree = "<group>"; };
+		E545B521BD969809CB59E0E5 /* SecondaryLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecondaryLoop.swift; sourceTree = "<group>"; };
+		E807C60346D633EFA8A879CB /* PrimaryLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryLoop.swift; sourceTree = "<group>"; };
+		E93F40A2461C5D66E69A3781 /* SceneRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneRenderer.swift; sourceTree = "<group>"; };
+		F2E7BAE9A9857DD07019EF2B /* CommandLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandLine.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		07429C59A1B326BA50E67015 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				7105227C05FA7C806DEF6D42 /* AdminServer.swift */,
+				CCBEF8D7A345E702E8F91D01 /* ContentView.swift */,
+				350BCA28E046FFC6C768573A /* GameMTKView.swift */,
+				038797AADE79DAF44AA8B0A1 /* ReactorApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		50BCD45440868C16568F8B4E /* Simulation */ = {
+			isa = PBXGroup;
+			children = (
+				091FCB94E5880EAA5CF5DD1F /* AuxiliarySystems.swift */,
+				7F1805ECF2FEF6761BFA0A9E /* Electrical.swift */,
+				3A9BF3FC6617A3572260FFA6 /* GameLoop.swift */,
+				30E9F43271649850889EF01D /* Neutronics.swift */,
+				36AAD7FEBFFC646F5CB031B0 /* OrdersGenerator.swift */,
+				E807C60346D633EFA8A879CB /* PrimaryLoop.swift */,
+				5A7ADCB8B8F2DD4623EE8824 /* Reactivity.swift */,
+				D2D89572B505942599656472 /* ReactorState.swift */,
+				6E38C5360EC8034605C0EDD5 /* SafetySystem.swift */,
+				E545B521BD969809CB59E0E5 /* SecondaryLoop.swift */,
+				ADE644546BD1147BFAAE940E /* TertiaryLoop.swift */,
+				9082E721344DBB828A8B7CEA /* ThermalHydraulics.swift */,
+			);
+			path = Simulation;
+			sourceTree = "<group>";
+		};
+		6EA560C6477E7BF2E687941B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				09132E4F330AA638981BD2CF /* Reactor.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		73082BEBDE14810BB7F8394E = {
+			isa = PBXGroup;
+			children = (
+				D8E2A9000FD7680FA6337027 /* Sources */,
+				6EA560C6477E7BF2E687941B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		94E55175DBACA9E8D38A2306 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				7364BF45212C570AAB3FBA16 /* CommandDispatcher.swift */,
+				F2E7BAE9A9857DD07019EF2B /* CommandLine.swift */,
+				9E5B968C1309BFE840664F8F /* CommandParser.swift */,
+				0F333E4EE9539B208DA745B5 /* Intellisense.swift */,
+				1265BC368E43E7B4376C43F1 /* TerminalBuffer.swift */,
+				917BC9A2FEFC56EF5D9B9992 /* TerminalLayout.swift */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
+		D8C86E9CC3B0557661813BFB /* Renderer */ = {
+			isa = PBXGroup;
+			children = (
+				C5D6F6D8F2E8AFF923B9F7E2 /* BridgingHeader.h */,
+				8382C866216A69E01D0518E2 /* CoreDiagramRenderer.swift */,
+				BD2150637D91D296879D8230 /* CRTShader.metal */,
+				C0D33E2F9934119C9B719B40 /* MeshGenerator.swift */,
+				1E0A1393294B19ECF327E2A0 /* Renderer.swift */,
+				E93F40A2461C5D66E69A3781 /* SceneRenderer.swift */,
+				9E211F913B98FAAA203709B9 /* SceneShaders.metal */,
+				732B7AF2DD8BBA222CE2BC43 /* ShaderTypes.h */,
+				C7772B4B5FB6D43A01E6A5DC /* TerminalRenderer.swift */,
+			);
+			path = Renderer;
+			sourceTree = "<group>";
+		};
+		D8E2A9000FD7680FA6337027 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				07429C59A1B326BA50E67015 /* App */,
+				D8C86E9CC3B0557661813BFB /* Renderer */,
+				50BCD45440868C16568F8B4E /* Simulation */,
+				94E55175DBACA9E8D38A2306 /* Terminal */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8823199B8048920FBF061A4B /* Reactor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A502FCFD246A2E3C041FA7B0 /* Build configuration list for PBXNativeTarget "Reactor" */;
+			buildPhases = (
+				470984C7A4547E5A2929A0C5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Reactor;
+			packageProductDependencies = (
+			);
+			productName = Reactor;
+			productReference = 09132E4F330AA638981BD2CF /* Reactor.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AC82A47E1B423E774B0EC409 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 2A80A9FBBAA1560385171274 /* Build configuration list for PBXProject "Reactor" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 73082BEBDE14810BB7F8394E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8823199B8048920FBF061A4B /* Reactor */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		470984C7A4547E5A2929A0C5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				20FC63885E6E71333505232A /* AdminServer.swift in Sources */,
+				B033FD3CD39AD741DB4445B6 /* AuxiliarySystems.swift in Sources */,
+				B7ACFB95CA1E25B02D51BB66 /* CRTShader.metal in Sources */,
+				5EC4894FBE8BB9ABF27FD0BE /* CommandDispatcher.swift in Sources */,
+				DF1C2163DAF2A9F75F139565 /* CommandLine.swift in Sources */,
+				5B26229EB2C1F8CA4BC838B4 /* CommandParser.swift in Sources */,
+				64504573A07E1D0FDD49D189 /* ContentView.swift in Sources */,
+				0D0DE3D8D0FF37530306FC82 /* CoreDiagramRenderer.swift in Sources */,
+				D053D66012DE14CF2003A11D /* Electrical.swift in Sources */,
+				82413ACBF1E004F72B07E46F /* GameLoop.swift in Sources */,
+				3298953CDE65F4517449D41C /* GameMTKView.swift in Sources */,
+				DEF66256B25A1C83B0ED578A /* Intellisense.swift in Sources */,
+				DC952D2948AF5AFEEB31A63E /* MeshGenerator.swift in Sources */,
+				A823996F88365DF173A14A78 /* Neutronics.swift in Sources */,
+				A200F815EDDFC41470E335A5 /* OrdersGenerator.swift in Sources */,
+				2F4451D20D126CE368F95668 /* PrimaryLoop.swift in Sources */,
+				5534C2BFF2774137BAD938E3 /* Reactivity.swift in Sources */,
+				DC65ABAEE4EA75E064763113 /* ReactorApp.swift in Sources */,
+				485A9F27A56E4BF7B3DDAE35 /* ReactorState.swift in Sources */,
+				00C6C8B46285B4407CE63E4D /* Renderer.swift in Sources */,
+				A20C0836597257B36B98BCA8 /* SafetySystem.swift in Sources */,
+				0BC4DD85D562C6BF72E5161C /* SceneRenderer.swift in Sources */,
+				9E7F69ED70F223F2F237F88F /* SceneShaders.metal in Sources */,
+				682B3A22BE95B71272F2379D /* SecondaryLoop.swift in Sources */,
+				499E946E534B4667383E62C2 /* TerminalBuffer.swift in Sources */,
+				4B1F2B5F82109F9F60A12744 /* TerminalLayout.swift in Sources */,
+				5A375FD306C311670C8D1039 /* TerminalRenderer.swift in Sources */,
+				FCA90DBD2D95DB5254A6A476 /* TertiaryLoop.swift in Sources */,
+				67996E6F973ECD7A387BA5B4 /* ThermalHydraulics.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		29C191EB6C77033F39972E7E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_GENERATION_MODE = GeneratedFile;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.reactor.app;
+				PRODUCT_NAME = Reactor;
+				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Renderer/BridgingHeader.h;
+			};
+			name = Release;
+		};
+		6A1DD23E8EB236F34F68DBBE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				METAL_HEADER_SEARCH_PATHS = Sources/Renderer;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				MTL_HEADER_SEARCH_PATHS = Sources/Renderer;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Renderer/BridgingHeader.h;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		6F4F626FE8BA344854734F39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_GENERATION_MODE = GeneratedFile;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.reactor.app;
+				PRODUCT_NAME = Reactor;
+				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Renderer/BridgingHeader.h;
+			};
+			name = Debug;
+		};
+		B80400B2A54C47420F621BC8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				METAL_HEADER_SEARCH_PATHS = Sources/Renderer;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				MTL_HEADER_SEARCH_PATHS = Sources/Renderer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Renderer/BridgingHeader.h;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2A80A9FBBAA1560385171274 /* Build configuration list for PBXProject "Reactor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6A1DD23E8EB236F34F68DBBE /* Debug */,
+				B80400B2A54C47420F621BC8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A502FCFD246A2E3C041FA7B0 /* Build configuration list for PBXNativeTarget "Reactor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6F4F626FE8BA344854734F39 /* Debug */,
+				29C191EB6C77033F39972E7E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AC82A47E1B423E774B0EC409 /* Project object */;
+}
