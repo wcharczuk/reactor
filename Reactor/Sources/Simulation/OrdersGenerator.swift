@@ -127,8 +127,15 @@ final class OrdersGenerator {
             timeAtTargetPower = 0.0
         }
 
-        // Check if power is at or above target (overshoot is progress)
         let currentFraction = state.thermalPowerFraction
+
+        // If power significantly exceeds target, advance immediately
+        if currentFraction >= targetFraction + 0.10 {
+            advancePhase(state: state, to: nextPhase)
+            return
+        }
+
+        // Check if power is at or above target (overshoot is progress)
         if currentFraction >= targetFraction - powerTolerance {
             timeAtTargetPower += dt
         } else {

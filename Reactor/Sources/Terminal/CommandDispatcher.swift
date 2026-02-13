@@ -67,6 +67,9 @@ final class CommandDispatcher {
         case .scram:
             response = handleScram()
 
+        case .reset(let path):
+            response = handleReset(path: path)
+
         case .view(let screen):
             response = handleView(screen: screen)
 
@@ -261,7 +264,7 @@ final class CommandDispatcher {
         } else if value == 0 && state.coolingWaterPumps[pumpIndex].rpm == 0 {
             state.coolingWaterPumps[pumpIndex].running = false
         }
-        var result = "OK: Cooling pump \(pumpNumber) target RPM = \(formatValue(value))"
+        var result = "OK: CW pump \(pumpNumber) target RPM = \(formatValue(value))"
         if let warning = warning {
             result += "\n\(warning)"
         }
@@ -315,9 +318,9 @@ final class CommandDispatcher {
         case "core.power-fraction":
             return "Power fraction = \(formatValue(state.thermalPowerFraction * 100.0))%"
         case "core.fuel-temp":
-            return "Fuel temp = \(formatValue(state.fuelTemp)) degC"
+            return "Fuel temp = \(formatValue(state.fuelTemp)) \u{00B0}C"
         case "core.cladding-temp":
-            return "Cladding temp = \(formatValue(state.claddingTemp)) degC"
+            return "Cladding temp = \(formatValue(state.claddingTemp)) \u{00B0}C"
         case "core.reactivity":
             return "Total reactivity = \(formatValue(state.totalReactivity)) mk"
         case "core.xenon-reactivity":
@@ -355,7 +358,7 @@ final class CommandDispatcher {
 
         // --- Core: Shutoff Rods ---
         case "core.shutoff-rods.pos":
-            return "Shutoff rods pos = \(formatValue(state.shutoffRodInsertionFraction * 100.0))"
+            return "Shutoff rods pos = \(formatValue(state.shutoffRodInsertionFraction * 100.0))%"
 
         // --- Primary ---
         case "primary.pump.1.rpm":
@@ -369,9 +372,9 @@ final class CommandDispatcher {
         case "primary.pressure":
             return "Primary pressure = \(formatValue(state.primaryPressure)) MPa"
         case "primary.inlet-temp":
-            return "Primary inlet temp = \(formatValue(state.primaryInletTemp)) degC"
+            return "Primary inlet temp = \(formatValue(state.primaryInletTemp)) \u{00B0}C"
         case "primary.outlet-temp":
-            return "Primary outlet temp = \(formatValue(state.primaryOutletTemp)) degC"
+            return "Primary outlet temp = \(formatValue(state.primaryOutletTemp)) \u{00B0}C"
         case "primary.flow-rate":
             return "Primary flow rate = \(formatValue(state.primaryFlowRate)) kg/s"
 
@@ -389,7 +392,7 @@ final class CommandDispatcher {
         case "secondary.condenser.pressure":
             return "Condenser pressure = \(formatValue(state.condenserPressure)) MPa"
         case "secondary.condenser.temp":
-            return "Condenser temp = \(formatValue(state.condenserTemp)) degC"
+            return "Condenser temp = \(formatValue(state.condenserTemp)) \u{00B0}C"
         case "secondary.sg.1.level":
             return "SG-1 level = \(formatValue(state.sgLevels[0]))%"
         case "secondary.sg.2.level":
@@ -404,11 +407,11 @@ final class CommandDispatcher {
         case "secondary.steam-pressure":
             return "Steam pressure = \(formatValue(state.steamPressure)) MPa"
         case "secondary.steam-temp":
-            return "Steam temp = \(formatValue(state.steamTemp)) degC"
+            return "Steam temp = \(formatValue(state.steamTemp)) \u{00B0}C"
         case "secondary.steam-flow":
             return "Steam flow = \(formatValue(state.steamFlow)) kg/s"
         case "secondary.feedwater-temp":
-            return "Feedwater temp = \(formatValue(state.feedwaterTemp)) degC"
+            return "Feedwater temp = \(formatValue(state.feedwaterTemp)) \u{00B0}C"
 
         // --- Electrical ---
         case "electrical.gross-power":
@@ -426,9 +429,9 @@ final class CommandDispatcher {
 
         // --- Tertiary ---
         case "tertiary.pump.1.rpm":
-            return "Cooling pump 1 RPM = \(formatValue(state.coolingWaterPumps[0].rpm))"
+            return "CW pump 1 RPM = \(formatValue(state.coolingWaterPumps[0].rpm))"
         case "tertiary.pump.2.rpm":
-            return "Cooling pump 2 RPM = \(formatValue(state.coolingWaterPumps[1].rpm))"
+            return "CW pump 2 RPM = \(formatValue(state.coolingWaterPumps[1].rpm))"
         case "tertiary.cooling-water-flow":
             return "Cooling water flow = \(formatValue(state.coolingWaterFlow)) kg/s"
 
@@ -616,6 +619,54 @@ final class CommandDispatcher {
         return "*** SCRAM INITIATED *** All shutoff rods inserting."
     }
 
+    // MARK: - RESET
+
+    private func handleReset(path: String) -> String {
+        switch path {
+        case "scram":
+            guard state.scramActive else {
+                return "No SCRAM active."
+            }
+            guard state.neutronDensity < 1e-4 else {
+                return "ERROR: Cannot reset SCRAM while neutron power > 0.01%. Wait for shutdown."
+            }
+            state.scramActive = false
+            state.addAlarm(message: "SCRAM RESET by operator", severity: .warning)
+            return "OK: SCRAM reset. Shutoff rods remain inserted \u{2014} withdraw with: set core.shutoff-rods.pos 0"
+
+        case "primary.pump.1", "primary.pump.2", "primary.pump.3", "primary.pump.4":
+            let index = Int(path.last!.asciiValue! - Character("1").asciiValue!)
+            guard index >= 0 && index < state.primaryPumps.count else {
+                return "ERROR: Invalid pump number."
+            }
+            guard state.primaryPumps[index].tripped else {
+                return "Pump \(index + 1) is not tripped."
+            }
+            state.primaryPumps[index].tripped = false
+            state.primaryPumps[index].running = false
+            state.primaryPumps[index].rpm = 0
+            state.primaryPumps[index].targetRPM = 0
+            return "OK: Pump \(index + 1) trip reset. Set RPM to restart."
+
+        case "tertiary.pump.1", "tertiary.pump.2":
+            let index = Int(path.last!.asciiValue! - Character("1").asciiValue!)
+            guard index >= 0 && index < state.coolingWaterPumps.count else {
+                return "ERROR: Invalid pump number."
+            }
+            guard state.coolingWaterPumps[index].tripped else {
+                return "CW pump \(index + 1) is not tripped."
+            }
+            state.coolingWaterPumps[index].tripped = false
+            state.coolingWaterPumps[index].running = false
+            state.coolingWaterPumps[index].rpm = 0
+            state.coolingWaterPumps[index].targetRPM = 0
+            return "OK: CW pump \(index + 1) trip reset. Set RPM to restart."
+
+        default:
+            return "ERROR: Unknown reset target: \(path). Try: reset scram | reset primary.pump.<1-4> | reset tertiary.pump.<1-2>"
+        }
+    }
+
     // MARK: - VIEW
 
     private func handleView(screen: String) -> String {
@@ -657,7 +708,7 @@ final class CommandDispatcher {
 
         var result = """
         Power: \(power)% | Thermal: \(thermal) MW(th) | Gross: \(gross) MW(e) | Net: \(net) MW(e)
-        Fuel: \(fuelT) degC | Pressure: \(pPressure) MPa | Flow: \(pFlow) kg/s | SCRAM: \(scramStatus)
+        Fuel: \(fuelT) \u{00B0}C | Pressure: \(pPressure) MPa | Flow: \(pFlow) kg/s | SCRAM: \(scramStatus)
         """
 
         // Show diesel fuel status when any diesel is running
@@ -677,8 +728,9 @@ final class CommandDispatcher {
     private func handleHelp(topic: String?) -> String {
         guard let topic = topic else {
             return """
-            Commands: set, get, start, stop, scram, view, time, status, help, quit
+            Commands: set, get, start, stop, scram, reset, view, time, status, help, quit
             Pumps use 'set' to control RPM. 'start/stop' for diesels and feed pumps.
+            'reset scram' to clear SCRAM. 'reset primary.pump.<N>' to clear pump trips.
             Type 'help startup' for startup procedure. Type 'help paths' for all noun paths.
             Use Tab for auto-completion. PageUp/PageDown to scroll output.
             """
@@ -821,9 +873,11 @@ final class CommandDispatcher {
 
     private func formatValue(_ value: Double) -> String {
         if value == value.rounded() && abs(value) < 10000 {
-            return String(format: "%.1f", value)
+            let s = String(format: "%.1f", value)
+            return s == "-0.0" ? "0.0" : s
         }
-        return String(format: "%.2f", value)
+        let s = String(format: "%.2f", value)
+        return s == "-0.00" ? "0.00" : s
     }
 }
 

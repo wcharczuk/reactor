@@ -5,7 +5,7 @@ enum SafetySystem {
 
     // MARK: - SCRAM Setpoints
 
-    private static let highNeutronPowerSetpoint: Double = 1.03     // 103% of full power
+    private static let highNeutronPowerSetpoint: Double = 1.15     // 115% of full power
     private static let highPowerRateSetpoint: Double = 0.15        // 15%/s
     private static let lowPrimaryPressureSetpoint: Double = 7.0    // MPa
     private static let highPrimaryPressureSetpoint: Double = 11.5  // MPa

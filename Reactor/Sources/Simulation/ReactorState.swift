@@ -43,7 +43,7 @@ struct CANDUConstants {
     static let coolantTempReference: Double = 25.0    // degC
 
     // --- Thermal-Hydraulic ---
-    static let fuelHeatCapacity: Double = 300.0       // kJ/degC (effective whole-core)
+    static let fuelHeatCapacity: Double = 5000.0      // kJ/degC (effective whole-core, gives ~4s fuel time constant)
     static let coolantHeatCapacity: Double = 600.0    // kJ/degC (primary D2O in core)
     static let fuelToCoolantResistance: Double = 0.0008 // degC/kW at rated flow
     static let coolantToSGResistance: Double = 0.008  // degC/kW at rated conditions

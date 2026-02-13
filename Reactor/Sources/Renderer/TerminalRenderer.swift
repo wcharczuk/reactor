@@ -121,18 +121,24 @@ class TerminalRenderer {
 
                 // Draw character
                 if cell.character != " " {
-                    let fgColor = cgColor(for: cell.foregroundColor)
-                    let attrs: [NSAttributedString.Key: Any] = [
-                        .font: font,
-                        .foregroundColor: fgColor
-                    ]
-                    let str = NSAttributedString(string: String(cell.character), attributes: attrs)
-                    let line = CTLineCreateWithAttributedString(str)
+                    if drawBoxDrawingChar(cell.character, ctx: ctx, px: px, py: py,
+                                          cellW: cellW, cellH: cellH,
+                                          color: cgColor(for: cell.foregroundColor)) {
+                        // Handled as geometry
+                    } else {
+                        let fgColor = cgColor(for: cell.foregroundColor)
+                        let attrs: [NSAttributedString.Key: Any] = [
+                            .font: font,
+                            .foregroundColor: fgColor
+                        ]
+                        let str = NSAttributedString(string: String(cell.character), attributes: attrs)
+                        let line = CTLineCreateWithAttributedString(str)
 
-                    ctx.saveGState()
-                    ctx.textPosition = CGPoint(x: px + 1, y: py + fontDescent)
-                    CTLineDraw(line, ctx)
-                    ctx.restoreGState()
+                        ctx.saveGState()
+                        ctx.textPosition = CGPoint(x: px + 1, y: py + fontDescent)
+                        CTLineDraw(line, ctx)
+                        ctx.restoreGState()
+                    }
                 }
             }
         }
@@ -176,6 +182,129 @@ class TerminalRenderer {
         texture.replace(region: region, mipmapLevel: 0,
                         withBytes: pixelData,
                         bytesPerRow: bytesPerRow)
+    }
+
+    // MARK: - Box-Drawing Characters (Pixel-Perfect)
+
+    /// Draw box-drawing and block characters as direct geometry instead of font glyphs.
+    /// Returns true if the character was handled, false if it should fall through to font rendering.
+    private func drawBoxDrawingChar(_ ch: Character, ctx: CGContext,
+                                     px: CGFloat, py: CGFloat,
+                                     cellW: CGFloat, cellH: CGFloat,
+                                     color: CGColor) -> Bool {
+        let midX = px + cellW / 2.0
+        let midY = py + cellH / 2.0
+        let lineWidth: CGFloat = 1.5
+
+        // Cell edges
+        let left = px
+        let right = px + cellW
+        let top = py + cellH  // CG coords: top is higher Y
+        let bottom = py
+
+        ctx.saveGState()
+        ctx.setStrokeColor(color)
+        ctx.setLineWidth(lineWidth)
+        ctx.setLineCap(.butt)
+
+        switch ch {
+        // ─ horizontal line
+        case "\u{2500}":
+            ctx.move(to: CGPoint(x: left, y: midY))
+            ctx.addLine(to: CGPoint(x: right, y: midY))
+            ctx.strokePath()
+
+        // │ vertical line
+        case "\u{2502}":
+            ctx.move(to: CGPoint(x: midX, y: bottom))
+            ctx.addLine(to: CGPoint(x: midX, y: top))
+            ctx.strokePath()
+
+        // ┌ top-left corner (draws right and down)
+        case "\u{250C}":
+            ctx.move(to: CGPoint(x: midX, y: midY))
+            ctx.addLine(to: CGPoint(x: right, y: midY))
+            ctx.move(to: CGPoint(x: midX, y: midY))
+            ctx.addLine(to: CGPoint(x: midX, y: bottom))
+            ctx.strokePath()
+
+        // ┐ top-right corner (draws left and down)
+        case "\u{2510}":
+            ctx.move(to: CGPoint(x: left, y: midY))
+            ctx.addLine(to: CGPoint(x: midX, y: midY))
+            ctx.move(to: CGPoint(x: midX, y: midY))
+            ctx.addLine(to: CGPoint(x: midX, y: bottom))
+            ctx.strokePath()
+
+        // └ bottom-left corner (draws right and up)
+        case "\u{2514}":
+            ctx.move(to: CGPoint(x: midX, y: midY))
+            ctx.addLine(to: CGPoint(x: right, y: midY))
+            ctx.move(to: CGPoint(x: midX, y: midY))
+            ctx.addLine(to: CGPoint(x: midX, y: top))
+            ctx.strokePath()
+
+        // ┘ bottom-right corner (draws left and up)
+        case "\u{2518}":
+            ctx.move(to: CGPoint(x: left, y: midY))
+            ctx.addLine(to: CGPoint(x: midX, y: midY))
+            ctx.move(to: CGPoint(x: midX, y: midY))
+            ctx.addLine(to: CGPoint(x: midX, y: top))
+            ctx.strokePath()
+
+        // █ full block
+        case "\u{2588}":
+            ctx.setFillColor(color)
+            ctx.fill(CGRect(x: px, y: py, width: cellW, height: cellH))
+
+        // ░ light shade (used as progress bar track)
+        case "\u{2591}":
+            ctx.setFillColor(color)
+            ctx.fill(CGRect(x: px, y: py, width: cellW, height: cellH))
+
+        // ▶ right-pointing triangle
+        case "\u{25B6}":
+            ctx.setFillColor(color)
+            ctx.move(to: CGPoint(x: px + 2, y: top - 4))
+            ctx.addLine(to: CGPoint(x: right - 1, y: midY))
+            ctx.addLine(to: CGPoint(x: px + 2, y: bottom + 4))
+            ctx.closePath()
+            ctx.fillPath()
+
+        // ◀ left-pointing triangle
+        case "\u{25C0}":
+            ctx.setFillColor(color)
+            ctx.move(to: CGPoint(x: right - 2, y: top - 4))
+            ctx.addLine(to: CGPoint(x: px + 1, y: midY))
+            ctx.addLine(to: CGPoint(x: right - 2, y: bottom + 4))
+            ctx.closePath()
+            ctx.fillPath()
+
+        // ▼ down-pointing triangle
+        case "\u{25BC}":
+            ctx.setFillColor(color)
+            ctx.move(to: CGPoint(x: px + 2, y: top - 4))
+            ctx.addLine(to: CGPoint(x: midX, y: bottom + 2))
+            ctx.addLine(to: CGPoint(x: right - 2, y: top - 4))
+            ctx.closePath()
+            ctx.fillPath()
+
+        // ▲ up-pointing triangle
+        case "\u{25B2}":
+            ctx.setFillColor(color)
+            ctx.move(to: CGPoint(x: px + 2, y: bottom + 4))
+            ctx.addLine(to: CGPoint(x: midX, y: top - 2))
+            ctx.addLine(to: CGPoint(x: right - 2, y: bottom + 4))
+            ctx.closePath()
+            ctx.fillPath()
+
+        default:
+            ctx.restoreGState()
+            return false
+        }
+
+        ctx.restoreGState()
+        return true
     }
 
     func cgColor(for color: TerminalColor) -> CGColor {

@@ -115,11 +115,10 @@ struct TerminalLayout {
 
     private static func renderAlarmsBox(buffer: TerminalBuffer, state: ReactorState) {
         let alarmBoxColor: TerminalColor = state.alarms.isEmpty ? .dim :
-            (state.alarms.contains { $0.message.contains("[TRIP]") } ? .danger : .warning)
+            (state.alarms.contains { $0.message.contains("[TRIP]") } ? .danger :
+             state.alarms.contains { $0.message.contains("[ALARM]") } ? .alarm : .warning)
         buffer.drawBox(x: 0, y: alarmsTop, width: leftPanelWidth, height: alarmsHeight, fg: alarmBoxColor)
-        let alarmTitleColor: TerminalColor = state.alarms.isEmpty ? .dim :
-            (state.alarms.contains { $0.message.contains("[TRIP]") } ? .danger : .warning)
-        buffer.putString(x: 2, y: alarmsTop, string: " ALARMS ", fg: alarmTitleColor)
+        buffer.putString(x: 2, y: alarmsTop, string: " ALARMS ", fg: alarmBoxColor)
 
         let maxLines = alarmsHeight - 2
 
@@ -131,7 +130,7 @@ struct TerminalLayout {
             let timeStr = formatElapsedTime(alarm.time)
             let msg = "\(timeStr) \(alarm.message)"
             let color: TerminalColor = alarm.message.contains("[TRIP]") ? .danger :
-                                       alarm.message.contains("[ALARM]") ? .warning : .normal
+                                       alarm.message.contains("[ALARM]") ? .alarm : .normal
             buffer.compactStrings.append((x: 2, y: row, text: String(msg.prefix(55)), fg: color))
             row += 1
         }
@@ -158,8 +157,10 @@ struct TerminalLayout {
         // Adjuster rod positions by bank
         let bankLabels = ["1", "2", "3", "4"]
         let adjStr = bankLabels.enumerated().map { (i, name) in
-            String(format: "%@:%2.0f", name, (1.0 - state.adjusterPositions[i]) * 100.0)
-        }.joined(separator: " ")
+            let moving = abs(state.adjusterPositions[i] - state.adjusterTargetPositions[i]) > 0.001
+            let suffix = moving ? "*" : " "
+            return String(format: "%@:%2.0f%%%@", name, (1.0 - state.adjusterPositions[i]) * 100.0, suffix)
+        }.joined(separator: "")
         putStatusLine(buffer: buffer, x: col1, y: row, label: "Adj:", value: adjStr, maxWidth: maxWidth)
         row += 1
 
@@ -167,17 +168,16 @@ struct TerminalLayout {
         let sorPct = state.shutoffRodInsertionFraction * 100.0
         let sorStr = state.scramActive ? String(format: "SCRAM %.0f%%", sorPct) : String(format: "%.0f%%", sorPct)
         putStatusLine(buffer: buffer, x: col1, y: row, label: "SORs:", value: sorStr, maxWidth: maxWidth,
-                      fg: state.scramActive ? .danger : (sorPct > 50 ? .warning : .normal))
+                      fg: state.scramActive ? .danger : (sorPct > 50 ? .warning : .dim))
         row += 1
 
         // Xenon worth
-        let xenonVal = abs(state.xenonReactivity) < 0.005 ? 0.0 : state.xenonReactivity
-        let xenonStr = String(format: "%.2f mk", xenonVal)
+        let xenonStr = String(format: "%.2f mk", nz(state.xenonReactivity, 2))
         putStatusLine(buffer: buffer, x: col1, y: row, label: "Xenon:", value: xenonStr, maxWidth: maxWidth)
         row += 1
 
         // Total reactivity
-        let reactStr = String(format: "%+.2f mk", state.totalReactivity)
+        let reactStr = String(format: "%+.2f mk", nz(state.totalReactivity, 2))
         let reactColor = deviationColor(value: state.totalReactivity, nominal: 0.0, warning: 3.0, danger: 7.0)
         putStatusLine(buffer: buffer, x: col1, y: row, label: "React:", value: reactStr, maxWidth: maxWidth, fg: reactColor)
         row += 1
@@ -381,7 +381,7 @@ struct TerminalLayout {
             buffer.drawProgressBar(x: zoneTextX + 3, y: coreRow, width: zoneBarWidth,
                                    value: fill, maxValue: 100.0, fg: .bright)
             let pctStr = String(format: "%3.0f%%", fill)
-            let mkStr = String(format: "%+.2fmk", zoneMk)
+            let mkStr = String(format: "%+.2f mk", nz(zoneMk, 2))
             let mkColor = deviationColor(value: zoneMk, nominal: 0, warning: 0.15, danger: 0.3)
             buffer.putString(x: zoneTextX + 3 + zoneBarWidth + 1, y: coreRow, string: pctStr, fg: .normal)
             buffer.putString(x: zoneTextX + 3 + zoneBarWidth + 6, y: coreRow, string: mkStr, fg: mkColor)
@@ -392,13 +392,13 @@ struct TerminalLayout {
         let ovBankLabels = ["1", "2", "3", "4"]
         var adjLine = "Adj "
         for (i, name) in ovBankLabels.enumerated() {
-            adjLine += String(format: "%@:%2.0f%%", name, (1.0 - state.adjusterPositions[i]) * 100.0)
-            if i < 3 { adjLine += " " }
+            let adjMoving = abs(state.adjusterPositions[i] - state.adjusterTargetPositions[i]) > 0.001
+            adjLine += String(format: "%@:%2.0f%%%@", name, (1.0 - state.adjusterPositions[i]) * 100.0, adjMoving ? "*" : " ")
         }
-        adjLine += "  "
+        adjLine += " "
         for i in 0..<2 {
-            adjLine += String(format: "MCA%d:%2.0f%%", i + 1, (1.0 - state.mcaPositions[i]) * 100.0)
-            if i < 1 { adjLine += " " }
+            let mcaMoving = abs(state.mcaPositions[i] - state.mcaTargetPositions[i]) > 0.001
+            adjLine += String(format: "MCA%d:%2.0f%%%@", i + 1, (1.0 - state.mcaPositions[i]) * 100.0, mcaMoving ? "*" : " ")
         }
         buffer.putString(x: zoneTextX, y: coreRow, string: adjLine, fg: .normal)
         coreRow += 1
@@ -406,10 +406,12 @@ struct TerminalLayout {
         let ovSorPct = state.shutoffRodInsertionFraction * 100.0
         let ovSorStr = state.scramActive ? String(format: "SCRAM %.0f%%", ovSorPct) : String(format: "%.0f%%", ovSorPct)
         let ovSorColor: TerminalColor = state.scramActive ? .danger : (ovSorPct > 50 ? .warning : .dim)
-        let ovTotalStr = String(format: "Total: %+.2f mk", state.totalReactivity)
+        let ovXeStr = String(format: "Xe:%+.1f mk", nz(state.xenonReactivity, 1))
+        let ovTotalStr = String(format: "Total:%+.2f mk", nz(state.totalReactivity, 2))
         let ovTotalColor = deviationColor(value: state.totalReactivity, nominal: 0, warning: 3, danger: 7)
         buffer.putString(x: zoneTextX, y: coreRow, string: "SOR: \(ovSorStr)", fg: ovSorColor)
-        buffer.putString(x: zoneTextX + 14, y: coreRow, string: ovTotalStr, fg: ovTotalColor)
+        buffer.putString(x: zoneTextX + 14, y: coreRow, string: ovXeStr, fg: .normal)
+        buffer.putString(x: zoneTextX + 28, y: coreRow, string: ovTotalStr, fg: ovTotalColor)
 
         // ── Flow Diagram Section (below core section) ──
         let flowTop = top + 13
@@ -420,10 +422,10 @@ struct TerminalLayout {
         // ── Top row: Core → Primary Pumps → Steam Generators → Turbine → Generator ──
 
         // Core
-        let thermalPower = String(format: "%.0f MW", state.thermalPower)
+        let thermalPower = String(format: "%.0f MW(th)", state.thermalPower)
         let powerPct = String(format: "%.1f%% FP", state.thermalPowerFraction * 100.0)
         let fuelT = String(format: "Fuel: %.0f\u{00B0}C", state.fuelTemp)
-        let reactStr = String(format: "%+.2f mk", state.totalReactivity)
+        let reactStr = String(format: "%+.2f mk", nz(state.totalReactivity, 2))
         let coreActive = state.thermalPower > 1.0
         let coreFuelColor = coreActive ? thresholdColor(value: state.fuelTemp, warning: 2200, danger: 2600) : .normal
         let coreReactColor = coreActive ? deviationColor(value: state.totalReactivity, nominal: 0, warning: 3, danger: 7) : .normal
@@ -461,7 +463,7 @@ struct TerminalLayout {
         let phtPumpColor: TerminalColor = phtTripped > 0 ? .danger : (phtRunning == 0 && state.thermalPower > 10 ? .warning : .normal)
         let phtBorder: TerminalColor? = phtTripped > 0 ? .danger : (phtRunning == 0 && state.thermalPower > 10 ? .warning : nil)
         drawComponent(buffer: buffer, x: phtX, y: topY, w: bw, h: bh,
-                      title: "PRIMARY PUMPS",
+                      title: "PHT PUMPS",
                       lines: [
                           ("P:" + phtSpinners, phtRunning > 0 ? .bright : .dim),
                           (phtRPMStr + "  " + phtFlow, .normal),
@@ -511,7 +513,7 @@ struct TerminalLayout {
 
         // Generator
         let grossMW = String(format: "%.1f MW(e)", state.grossPower)
-        let netMW = String(format: "Net: %.1f MW", state.netPower)
+        let netMW = String(format: "Net: %.1f MW(e)", state.netPower)
         let freqStr = String(format: "%.2f Hz", state.generatorFrequency)
         let gridStr = state.generatorConnected ? "GRID: SYNC" : "GRID: OFF"
         let genActive = state.grossPower > 0.1
@@ -598,7 +600,7 @@ struct TerminalLayout {
         let cwRPMStr = String(format: "%.0f RPM", cwAvgRPM)
         let cwFlowStr = String(format: "%.0f kg/s", state.coolingWaterFlow)
         drawComponent(buffer: buffer, x: genX, y: botY, w: bw, h: bh,
-                      title: "TERTIARY PUMPS",
+                      title: "CW PUMPS",
                       lines: [
                           ("P:" + cwSpinners, cwRunning > 0 ? .bright : .dim),
                           (cwRPMStr, .normal),
@@ -612,7 +614,12 @@ struct TerminalLayout {
             let d2 = state.dieselGenerators[1]
             let d1status = d1.running ? (d1.available ? "RUN" : "START") : "OFF"
             let d2status = d2.running ? (d2.available ? "RUN" : "START") : "OFF"
-            buffer.putString(x: left, y: dieselY, string: "DG-1:\(d1status) DG-2:\(d2status)", fg: .dim)
+            let d1Color: TerminalColor = d1.available ? .normal : (d1.running ? .dim : .dim)
+            let d2Color: TerminalColor = d2.available ? .normal : (d2.running ? .dim : .dim)
+            buffer.putString(x: left, y: dieselY, string: "DG-1: ", fg: .dim)
+            buffer.putString(x: left + 6, y: dieselY, string: d1status, fg: d1Color)
+            buffer.putString(x: left + 12, y: dieselY, string: "DG-2: ", fg: .dim)
+            buffer.putString(x: left + 18, y: dieselY, string: d2status, fg: d2Color)
         }
 
     }
@@ -673,7 +680,7 @@ struct TerminalLayout {
             sorColor = .danger
         } else {
             sorStatus = String(format: "%.0f%%", sorDetailPct)
-            sorColor = sorDetailPct > 50 ? .warning : .bright
+            sorColor = sorDetailPct > 50 ? .warning : .dim
         }
         buffer.putString(x: left + 2, y: row, string: sorStatus, fg: sorColor)
         row += 2
@@ -718,39 +725,34 @@ struct TerminalLayout {
             sorMk = -CANDUConstants.shutoffRodWorth * Reactivity.rodWorthExtracted(state.shutoffRodInsertionFraction)
         }
 
-        let adjStr = String(format: "Adj:%+6.1f", adjMk)
-        let mcaStr = String(format: "MCA:%+6.1f", mcaMk)
-        let zoneStr = String(format: "Zone:%+5.1f", zoneMk)
+        let adjStr = String(format: "Adj:%+6.1f", nz(adjMk, 1))
+        let mcaStr = String(format: "MCA:%+6.1f", nz(mcaMk, 1))
+        let zoneStr = String(format: "Zone:%+5.1f", nz(zoneMk, 1))
         buffer.putString(x: left + 2, y: row, string: adjStr, fg: .normal)
         buffer.putString(x: left + 16, y: row, string: mcaStr, fg: .normal)
         buffer.putString(x: left + 30, y: row, string: zoneStr, fg: .normal)
         row += 1
 
-        let sorStr = String(format: "SOR:%+6.1f", sorMk)
-        let fdbkStr = String(format: "Fdbk:%+5.1f", state.feedbackReactivity)
-        let xeStr = String(format: "Xe:%+6.1f", state.xenonReactivity)
+        let sorStr = String(format: "SOR:%+6.1f", nz(sorMk, 1))
+        let fdbkStr = String(format: "Fdbk:%+5.1f", nz(state.feedbackReactivity, 1))
+        let xeStr = String(format: "Xe:%+6.1f", nz(state.xenonReactivity, 1))
         let sorMkColor: TerminalColor = sorMk < -1 ? .danger : .normal
         buffer.putString(x: left + 2, y: row, string: sorStr, fg: sorMkColor)
         buffer.putString(x: left + 16, y: row, string: fdbkStr, fg: .normal)
         buffer.putString(x: left + 30, y: row, string: xeStr, fg: .normal)
         row += 1
 
-        let totalStr = String(format: "TOTAL: %+.2f mk", state.totalReactivity)
+        let totalStr = String(format: "TOTAL: %+.2f mk", nz(state.totalReactivity, 2))
         let totalColor = deviationColor(value: state.totalReactivity, nominal: 0, warning: 3, danger: 7)
         buffer.putString(x: left + 2, y: row, string: totalStr, fg: totalColor)
 
-        // --- Right half: raster diagram ---
-        // The diagram region starts after the text area
+        // --- Right half: raster tile-grid diagram (same style as overview, but larger) ---
         let diagramGridX = left + textWidth + 2
         let diagramGridY = top
         let diagramGridWidth = left + width - diagramGridX
         let diagramGridHeight = height
 
-        // Convert from content-area coords to absolute grid coords
-        // renderCore receives left/top as content offsets within the right panel box
-        // (left = rightPanelLeft + 2, top = mainDisplayTop + 2)
-        // The grid coords passed to CoreDiagramData must be absolute buffer positions
-        buffer.coreDiagram = CoreDiagramData(
+        buffer.overviewDiagram = CoreDiagramData(
             gridX: diagramGridX,
             gridY: diagramGridY,
             gridWidth: diagramGridWidth,
@@ -818,8 +820,8 @@ struct TerminalLayout {
             let rpmFraction = pump.rpm / CANDUConstants.pumpRatedRPM
             let estimatedPower = CANDUConstants.pumpMotorPower * pow(rpmFraction, 3)
             let estimatedFlow = CANDUConstants.pumpRatedFlow * rpmFraction
-            let powerStr = String(format: "%4.1fMW", estimatedPower)
-            let flowStr = String(format: "%5.0fkg/s", estimatedFlow)
+            let powerStr = String(format: "%4.1f MW", estimatedPower)
+            let flowStr = String(format: "%5.0f kg/s", estimatedFlow)
 
             buffer.putString(x: left + 2, y: row, string: "P-\(i+1)    ", fg: .normal)
             buffer.putString(x: left + 9, y: row, string: status, fg: statusColor)
@@ -892,7 +894,7 @@ struct TerminalLayout {
         row += 1
 
         // Feed pumps
-        buffer.putString(x: left, y: row, string: "FEED WATER PUMPS", fg: .bright)
+        buffer.putString(x: left, y: row, string: "FEED PUMPS", fg: .bright)
         row += 1
         for (i, pump) in state.feedPumps.enumerated() {
             let status = pump.running ? "RUN" : "STOP"
@@ -960,13 +962,30 @@ struct TerminalLayout {
         buffer.putString(x: left + 2, y: row, string: "Load: \(service) MW", fg: .normal)
         row += 1
 
-        let pumpPower = state.primaryPumps.filter({ $0.running }).count
-        let phtLoad = String(format: "%.1f", Double(pumpPower) * CANDUConstants.pumpMotorPower)
-        buffer.putString(x: left + 4, y: row, string: "PHT (\(pumpPower)): \(phtLoad) MW", fg: .dim)
+        let baseLoadStr = String(format: "%.0f", CANDUConstants.stationServiceBase)
+        buffer.putString(x: left + 4, y: row, string: "Base: \(baseLoadStr) MW", fg: .dim)
         row += 1
-        let cwPumps = state.coolingWaterPumps.filter({ $0.running }).count
-        let cwLoad = String(format: "%.1f", Double(cwPumps) * CANDUConstants.coolingWaterPumpPower)
-        buffer.putString(x: left + 4, y: row, string: "CW (\(cwPumps)):  \(cwLoad) MW", fg: .dim)
+        let phtPumpsRunning = state.primaryPumps.filter({ $0.running }).count
+        var phtPumpLoad: Double = 0
+        for pump in state.primaryPumps where pump.running {
+            let rpmFrac = pump.rpm / CANDUConstants.pumpRatedRPM
+            phtPumpLoad += CANDUConstants.pumpMotorPower * pow(rpmFrac, 3)
+        }
+        let phtLoadStr = String(format: "%.1f", phtPumpLoad)
+        buffer.putString(x: left + 4, y: row, string: "PHT (\(phtPumpsRunning)): \(phtLoadStr) MW", fg: .dim)
+        row += 1
+        let cwPumpsRunning = state.coolingWaterPumps.filter({ $0.running }).count
+        var cwPumpLoad: Double = 0
+        for pump in state.coolingWaterPumps where pump.running {
+            let rpmFrac = pump.rpm / CANDUConstants.pumpRatedRPM
+            cwPumpLoad += CANDUConstants.coolingWaterPumpPower * pow(rpmFrac, 3)
+        }
+        let cwLoadStr = String(format: "%.1f", cwPumpLoad)
+        buffer.putString(x: left + 4, y: row, string: "CW (\(cwPumpsRunning)):  \(cwLoadStr) MW", fg: .dim)
+        row += 1
+        let fpRunningCount = state.feedPumps.filter({ $0.running }).count
+        let fpLoadStr = String(format: "%.1f", Double(fpRunningCount) * 3.0)
+        buffer.putString(x: left + 4, y: row, string: "Feed (\(fpRunningCount)): \(fpLoadStr) MW", fg: .dim)
         row += 2
 
         // Net output
@@ -1002,7 +1021,7 @@ struct TerminalLayout {
             let power = String(format: "%.1f", dg.power)
             let fuelPct = String(format: "%.0f", dg.fuelLevel * 100.0)
             let fuelColor: TerminalColor = dg.fuelLevel < 0.10 ? .danger : (dg.fuelLevel < 0.25 ? .warning : .dim)
-            buffer.putString(x: left + 2, y: row, string: "DG-\(i+1): \(status) \(power)MW", fg: statusColor)
+            buffer.putString(x: left + 2, y: row, string: "DG-\(i+1): \(status) \(power) MW", fg: statusColor)
             buffer.putString(x: left + 30, y: row, string: "Fuel: \(fuelPct)%", fg: fuelColor)
             row += 1
         }
@@ -1019,7 +1038,7 @@ struct TerminalLayout {
         row += 1
 
         // Header
-        buffer.putString(x: left, y: row, string: "TIME        MESSAGE", fg: .dim)
+        buffer.putString(x: left, y: row, string: "TIME      MESSAGE", fg: .dim)
         row += 1
 
         let maxLines = height - 4
@@ -1032,7 +1051,7 @@ struct TerminalLayout {
             let timeStr = formatElapsedTime(alarm.time)
             let msg = String(alarm.message.prefix(maxMsgWidth))
             let color: TerminalColor = alarm.message.contains("[TRIP]") ? .danger :
-                                       alarm.message.contains("[ALARM]") ? .warning : .normal
+                                       alarm.message.contains("[ALARM]") ? .alarm : .normal
             buffer.putString(x: left, y: row, string: timeStr, fg: .dim)
             buffer.putString(x: left + 10, y: row, string: msg, fg: color)
             row += 1
@@ -1101,33 +1120,39 @@ struct TerminalLayout {
 
             let inputText = commandLine.currentText
             let maxInputWidth = width - 6
-            let displayText = String(inputText.prefix(maxInputWidth))
-            buffer.putString(x: left + 4, y: promptRow, string: displayText, fg: .input)
 
-            // Cursor (shown as a bright block character)
-            let cursorX = left + 4 + min(commandLine.cursorPosition, maxInputWidth)
-            if cursorX < left + width - 2 {
-                let cursorChar: Character = commandLine.cursorPosition < inputText.count
-                    ? Character(String(inputText[inputText.index(inputText.startIndex, offsetBy: commandLine.cursorPosition)]))
-                    : "_"
-                buffer.putChar(x: cursorX, y: promptRow, char: cursorChar, fg: .background, bg: .input)
-            }
-        }
+            if inputText.isEmpty {
+                // Blinking cursor then placeholder text
+                buffer.putChar(x: left + 4, y: promptRow, char: " ", fg: .background, bg: .input)
+                buffer.putString(x: left + 5, y: promptRow, string: "enter command", fg: .dim)
+            } else {
+                let displayText = String(inputText.prefix(maxInputWidth))
+                buffer.putString(x: left + 4, y: promptRow, string: displayText, fg: .input)
 
-        // Intellisense suggestions (bottom row)
-        if !intellisense.isEmpty {
-            let suggestRow = top + height - 1
-            // Combine suggestions into a single line
-            let maxSuggestions = 5
-            let suggestions = intellisense.prefix(maxSuggestions)
-            var suggestStr = suggestions.joined(separator: "  |  ")
-            if intellisense.count > maxSuggestions {
-                suggestStr += "  | ..."
+                // Cursor (shown as a bright block character)
+                let cursorX = left + 4 + min(commandLine.cursorPosition, maxInputWidth)
+                if cursorX < left + width - 2 {
+                    let cursorChar: Character = commandLine.cursorPosition < inputText.count
+                        ? Character(String(inputText[inputText.index(inputText.startIndex, offsetBy: commandLine.cursorPosition)]))
+                        : " "
+                    buffer.putChar(x: cursorX, y: promptRow, char: cursorChar, fg: .background, bg: .input)
+                }
+
+                // Inline ghost text: show first completion suffix after cursor
+                if !intellisense.isEmpty, let first = intellisense.first {
+                    let lower = inputText.lowercased()
+                    let firstLower = first.lowercased()
+                    if firstLower.hasPrefix(lower) && first.count > inputText.count {
+                        let suffixStart = first.index(first.startIndex, offsetBy: inputText.count)
+                        let ghost = String(first[suffixStart...])
+                        let ghostX = left + 4 + displayText.count
+                        let maxGhost = (left + width - 2) - ghostX
+                        if maxGhost > 0 {
+                            buffer.putString(x: ghostX, y: promptRow, string: String(ghost.prefix(maxGhost)), fg: .dim)
+                        }
+                    }
+                }
             }
-            let truncated = String(suggestStr.prefix(width - 4))
-            // Overwrite over the box border line for the suggestions
-            buffer.fillRect(x: left + 1, y: suggestRow, width: width - 2, height: 1, char: " ", fg: .dim, bg: .background)
-            buffer.putString(x: left + 2, y: suggestRow, string: truncated, fg: .dim)
         }
     }
 
@@ -1271,40 +1296,71 @@ struct TerminalLayout {
                                 "  (SG levels low — add feed pump)"]
                     }
                 }
-                // Raise power by lowering zones and withdrawing rods
+                // Raise power / compensate xenon by lowering zones and withdrawing rods
                 let diff = pct - target
-                if diff < -5 {
-                    // Need more power — lower zones or withdraw rods
-                    let avgZone = state.zoneControllerFills.reduce(0.0, +) / 6.0
-                    let banksOut = state.adjusterTargetPositions.filter { $0 > 0.9 }.count
-                    let mcasOut = state.mcaTargetPositions.filter { $0 > 0.9 }.count
+                let avgZone = state.zoneControllerFills.reduce(0.0, +) / 6.0
+                let banksOut = state.adjusterTargetPositions.filter { $0 > 0.9 }.count
+                let mcasOut = state.mcaTargetPositions.filter { $0 > 0.9 }.count
+                let xenonMk = state.xenonReactivity
+                let needMoreReactivity = diff < -5
+                // Proactive: xenon is building and we have unused rods
+                let xenonBuilding = xenonMk < -2.0
+                    && (banksOut < 4 || mcasOut < 2 || avgZone > 10)
+
+                if needMoreReactivity || xenonBuilding {
+                    let reason = needMoreReactivity
+                        ? "raise power"
+                        : "compensate Xe \(String(format: "%.1f", xenonMk)) mk"
+                    // Step size depends on power — large steps at high power cause LOG RATE trip
+                    let step: Int = pct > 60 ? 5 : (pct > 30 ? 10 : 20)
                     // First: lower zones from 100 toward 50
                     if avgZone > 55 {
-                        let newFill = max(Int(avgZone) - 20, 50)
-                        return ["> set core.zone-controllers.*.fill \(newFill)",
-                                "  (lower zones to raise power)"]
+                        let newFill = max(Int(avgZone) - step, 50)
+                        var lines = ["> set core.zone-controllers.*.fill \(newFill)",
+                                     "  (\(reason))"]
+                        if pct > 30 {
+                            lines.append("  small steps — LOG RATE trip >15%/s")
+                        }
+                        return lines
                     }
                     // Then: withdraw more adj banks
                     if banksOut < 4 {
                         let nextBank = banksOut + 1
                         return ["> set core.adjuster-rods.\(nextBank).pos 0",
-                                "  (withdraw bank \(nextBank) for more power)"]
+                                "  (\(reason))"]
                     }
                     // Then: withdraw MCAs
                     if mcasOut < 2 {
                         let nextMCA = mcasOut + 1
                         return ["> set core.mca.\(nextMCA).pos 0",
-                                "  (withdraw MCA-\(nextMCA) for more power)"]
+                                "  (\(reason))"]
                     }
                     // All rods out: lower zones further
                     if avgZone > 10 {
-                        let newFill = max(Int(avgZone) - 10, 0)
-                        return ["> set core.zone-controllers.*.fill \(newFill)",
-                                "  (lower zones to raise power)"]
+                        let newFill = max(Int(avgZone) - step, 0)
+                        var lines = ["> set core.zone-controllers.*.fill \(newFill)",
+                                     "  (\(reason))"]
+                        if pct > 30 {
+                            lines.append("  small steps — LOG RATE trip >15%/s")
+                        }
+                        return lines
                     }
-                    return ["Power rising..."]
+                    if needMoreReactivity {
+                        return ["Power rising..."]
+                    }
                 } else if diff > 5 {
-                    return ["Raise zone fills to lower power"]
+                    // Power above target — suggest ways to reduce
+                    let raiseStep: Int = pct > 60 ? 5 : (pct > 30 ? 10 : 20)
+                    if avgZone < 90 {
+                        let newFill = min(Int(avgZone) + raiseStep, 100)
+                        return ["> set core.zone-controllers.*.fill \(newFill)",
+                                "  (reduce power — small steps)"]
+                    }
+                    if banksOut > 0 {
+                        return ["> set core.adjuster-rods.\(banksOut).pos 100",
+                                "  (insert rods to reduce power)"]
+                    }
+                    return ["Power above target — stabilizing"]
                 } else {
                     return ["Hold steady — stabilizing"]
                 }
@@ -1378,6 +1434,13 @@ struct TerminalLayout {
     }
 
     // MARK: - Utilities
+
+    /// Returns 0.0 if the value would display as negative zero at the given decimal places.
+    private static func nz(_ value: Double, _ decimals: Int) -> Double {
+        let scale = pow(10.0, Double(decimals))
+        if abs(value * scale) < 0.5 { return 0.0 }
+        return value
+    }
 
     /// Format elapsed time as HH:MM:SS.
     private static func formatElapsedTime(_ seconds: Double) -> String {

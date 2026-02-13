@@ -80,15 +80,23 @@ enum PrimaryLoop {
         let tRef: Double = 287.0 // reference average temperature at rated conditions
         let pRef: Double = CANDUConstants.primaryPressureRated
 
-        // Below ~100C, the system is essentially depressurized
-        // Above 100C, pressure builds up
-        let targetPressure: Double
+        // Pressurizer maintains system pressure using heaters.
+        // Once pumps are running and establishing flow, the pressurizer
+        // heats up and builds a vapor space to reach operating pressure.
+        let flowFraction = state.primaryFlowRate / CANDUConstants.totalRatedFlow
+
+        // Temperature-based equilibrium pressure
+        let thermalPressure: Double
         if tAvg < 100.0 {
-            targetPressure = 0.1 + (tAvg - 25.0) * 0.001 // very low pressure
+            thermalPressure = 0.1 + (tAvg - 25.0) * 0.001
         } else {
-            // Pressurizer maintains setpoint with temperature compensation
-            targetPressure = pRef + CANDUConstants.primaryPressureCoeff * (tAvg - tRef)
+            thermalPressure = pRef + CANDUConstants.primaryPressureCoeff * (tAvg - tRef)
         }
+
+        // Pressurizer establishes minimum pressure when pumps have flow
+        // (heaters powered from diesel or grid). Ramps up over ~60s.
+        let pressurizerMinPressure: Double = flowFraction > 0.05 ? 8.5 : 0.1
+        let targetPressure = max(thermalPressure, pressurizerMinPressure)
 
         // Pressure responds with a time constant (pressurizer dynamics)
         let pressureTau: Double = 5.0 // seconds

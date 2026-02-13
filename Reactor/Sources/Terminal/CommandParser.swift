@@ -17,6 +17,9 @@ enum Command {
     /// Emergency SCRAM: fully insert all control rods.
     case scram
 
+    /// Reset a tripped component (scram, pump, etc.)
+    case reset(path: String)
+
     /// Switch the display to a named view. e.g. `view core`
     case view(screen: String)
 
@@ -99,6 +102,13 @@ struct CommandParser {
 
         case "scram":
             return .scram
+
+        case "reset":
+            guard tokens.count >= 2 else {
+                return .unknown(text: "reset requires a target: reset scram | reset primary.pump.<1-4>")
+            }
+            let path = tokens[1].lowercased()
+            return .reset(path: path)
 
         case "view":
             guard tokens.count >= 2 else {

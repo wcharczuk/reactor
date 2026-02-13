@@ -27,7 +27,7 @@ final class Intellisense {
     private let pathEntries: [PathEntry]
 
     /// All valid verbs.
-    private let validVerbs: [String] = ["set", "get", "start", "stop", "scram", "view", "time", "status", "help", "quit", "exit"]
+    private let validVerbs: [String] = ["set", "get", "start", "stop", "scram", "reset", "view", "time", "status", "help", "quit", "exit"]
 
     /// Valid view screen names.
     private let viewScreens: [String] = ["overview", "core", "primary", "secondary", "electrical", "alarms"]
@@ -40,24 +40,28 @@ final class Intellisense {
         ("core.adjuster-rods", """
          ADJUSTER RODS — Fine Reactivity Control
          4 banks (A-D) of stainless steel rods normally withdrawn from the core.
-         Each bank worth ~3.75 mk. Inserted/withdrawn to compensate for xenon
-         transients and make small reactivity adjustments during load-following.
+         Each bank worth ~3.75 mk (~15 mk total). Inserted/withdrawn to
+         compensate for xenon transients and adjust power during load-following.
+         Withdraw (pos 0) = adds reactivity = raises thermal power.
+         Insert  (pos 100) = absorbs neutrons = lowers thermal power.
          Path: core.adjuster-rods.{1,2,3,4}.pos (0=out, 100=in)
          """),
         ("core.zone-controllers", """
          ZONE CONTROLLERS — Spatial Flux Shaping
          6 vertical compartments in the moderator filled with light water (H2O).
-         Light water absorbs neutrons, so raising fill level reduces local flux.
-         Total reactivity worth ~7 mk. Used to flatten the flux profile and
-         prevent xenon oscillations across the core.
+         Light water absorbs neutrons — fill level controls local reactivity.
+         Total reactivity worth ~7 mk.
+         Lower fill = less absorption = more reactivity = raises thermal power.
+         Raise fill = more absorption = less reactivity = lowers thermal power.
          Path: core.zone-controllers.{1..6}.fill (0-100%)
          """),
         ("core.mca", """
          MECHANICAL CONTROL ABSORBERS (MCA)
          2 motor-driven absorber rods for coarse reactivity control.
-         Each worth ~5 mk. Used during large power maneuvers where adjuster
-         rods alone provide insufficient reactivity span. Slower than adjusters
-         but provide a larger reactivity effect.
+         Each worth ~5 mk (~10 mk total). Used during large power maneuvers
+         where adjuster rods alone provide insufficient reactivity span.
+         Withdraw (pos 0) = adds reactivity = raises thermal power.
+         Insert  (pos 100) = absorbs neutrons = lowers thermal power.
          Path: core.mca.{1,2}.pos (0=out, 100=in)
          """),
         ("core.shutoff-rods", """
@@ -65,7 +69,8 @@ final class Intellisense {
          Gravity-driven spring-assisted shutdown rods held out of core by
          electromagnets. On SCRAM signal all rods drop into the core within
          ~2 seconds. Combined worth ~80 mk — enough to shut down the reactor
-         from any operating state.
+         from any operating state. Fully inserted = deep negative reactivity
+         = thermal power drops to zero (decay heat only).
          Path: core.shutoff-rods.pos (0=out, 100=fully inserted)
          """),
         ("core", """
@@ -157,12 +162,12 @@ final class Intellisense {
         ))
         entries.append(PathEntry(
             path: "core.fuel-temp",
-            description: "Average fuel temperature (degC, read-only)",
+            description: "Average fuel temperature (\u{00B0}C, read-only)",
             valueType: .readOnly, range: nil
         ))
         entries.append(PathEntry(
             path: "core.cladding-temp",
-            description: "Average cladding temperature (degC, read-only)",
+            description: "Average cladding temperature (\u{00B0}C, read-only)",
             valueType: .readOnly, range: nil
         ))
         entries.append(PathEntry(
@@ -233,14 +238,14 @@ final class Intellisense {
 
         entries.append(PathEntry(
             path: "primary.inlet-temp",
-            description: "Primary inlet (cold leg) temperature (degC, read-only)",
+            description: "Primary inlet (cold leg) temperature (\u{00B0}C, read-only)",
             valueType: .readOnly,
             range: nil
         ))
 
         entries.append(PathEntry(
             path: "primary.outlet-temp",
-            description: "Primary outlet (hot leg) temperature (degC, read-only)",
+            description: "Primary outlet (hot leg) temperature (\u{00B0}C, read-only)",
             valueType: .readOnly,
             range: nil
         ))
@@ -286,7 +291,7 @@ final class Intellisense {
 
         entries.append(PathEntry(
             path: "secondary.condenser.temp",
-            description: "Condenser temperature in degC (read-only)",
+            description: "Condenser temperature (\u{00B0}C, read-only)",
             valueType: .readOnly,
             range: nil
         ))
@@ -315,7 +320,7 @@ final class Intellisense {
         ))
         entries.append(PathEntry(
             path: "secondary.steam-temp",
-            description: "Main steam temperature (degC, read-only)",
+            description: "Main steam temperature (\u{00B0}C, read-only)",
             valueType: .readOnly, range: nil
         ))
         entries.append(PathEntry(
@@ -325,7 +330,7 @@ final class Intellisense {
         ))
         entries.append(PathEntry(
             path: "secondary.feedwater-temp",
-            description: "Feedwater temperature (degC, read-only)",
+            description: "Feedwater temperature (\u{00B0}C, read-only)",
             valueType: .readOnly, range: nil
         ))
 
@@ -370,7 +375,7 @@ final class Intellisense {
         for pump in 1...2 {
             entries.append(PathEntry(
                 path: "tertiary.pump.\(pump).rpm",
-                description: "Cooling water pump \(pump) target RPM",
+                description: "CW pump \(pump) target RPM",
                 valueType: .double,
                 range: 0.0...1500.0
             ))
@@ -447,7 +452,7 @@ final class Intellisense {
         case "help":
             if tokens.count < 2 || (tokens.count == 2 && !partialInput.hasSuffix(" ")) {
                 let partial = tokens.count >= 2 ? tokens[1].lowercased() : ""
-                let commandTopics = ["set", "get", "start", "stop", "scram", "view", "time", "startup", "paths"]
+                let commandTopics = ["set", "get", "start", "stop", "scram", "reset", "view", "time", "startup", "paths"]
                 let componentTopics = componentDescriptions.map { $0.prefix }
                 let allTopics = commandTopics + componentTopics
                 return Array(Set(allTopics
@@ -465,6 +470,15 @@ final class Intellisense {
 
         case "scram", "status":
             return []
+
+        case "reset":
+            let resetTargets = ["scram", "primary.pump.1", "primary.pump.2", "primary.pump.3", "primary.pump.4", "tertiary.pump.1", "tertiary.pump.2"]
+            if tokens.count < 2 {
+                return resetTargets.map { "reset \($0)" }
+            }
+            let partial = tokens[1].lowercased()
+            let matches = resetTargets.filter { $0.hasPrefix(partial) }
+            return matches.map { "reset \($0)" }
 
         default:
             return []
@@ -621,6 +635,9 @@ final class Intellisense {
 
         case "scram":
             return "SCRAM - Emergency shutdown. Fully inserts all shutoff rods immediately."
+
+        case "reset":
+            return "RESET - Clear a tripped component. Usage: reset scram | reset primary.pump.<1-4> | reset tertiary.pump.<1-2>"
 
         case "view":
             return "VIEW <screen> - Switch display. Screens: overview, core, primary, secondary, electrical, alarms"
