@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents a parsed terminal command.
 enum Command {
-    /// Set a value at a given path. e.g. `set core.adjuster-rods.bank-a.pos 0`
+    /// Set a value at a given path. e.g. `set core.adjuster-rods.1.pos 0`
     case set(path: String, value: String)
 
     /// Get (read) the current value at a given path. e.g. `get primary.pump.1.rpm`
@@ -20,7 +20,7 @@ enum Command {
     /// Switch the display to a named view. e.g. `view core`
     case view(screen: String)
 
-    /// Set the time acceleration multiplier. e.g. `speed 5` or `speed 0.5`
+    /// Set the time acceleration multiplier. e.g. `time 5` or `time 0.5`
     case speed(multiplier: Double)
 
     /// Show general status summary.
@@ -107,14 +107,14 @@ struct CommandParser {
             let screen = tokens[1].lowercased()
             return .view(screen: screen)
 
-        case "speed":
+        case "time":
             guard tokens.count >= 2 else {
-                return .unknown(text: "speed requires a multiplier: speed <0.1|0.25|0.5|1|2|5|10>")
+                return .unknown(text: "time requires a multiplier: time <0.1|0.25|0.5|1|2|5|10>")
             }
             if let multiplier = Double(tokens[1]) {
                 return .speed(multiplier: multiplier)
             } else {
-                return .unknown(text: "speed multiplier must be a number: speed <0.1|0.25|0.5|1|2|5|10>")
+                return .unknown(text: "time multiplier must be a number: time <0.1|0.25|0.5|1|2|5|10>")
             }
 
         case "status":

@@ -97,10 +97,10 @@ final class OrdersGenerator {
         }
 
         // Advance once the operator has prepared the plant:
-        // - At least 2 primary pumps running
+        // - At least 4 primary pumps running
         // - Shutoff rods withdrawn
         let runningPrimary = state.primaryPumps.filter { $0.running }.count
-        if runningPrimary >= 2 && !state.shutoffRodsInserted {
+        if runningPrimary >= 4 && !state.shutoffRodsInserted {
             advancePhase(state: state, to: .waitingForCriticality)
         }
     }
@@ -127,9 +127,9 @@ final class OrdersGenerator {
             timeAtTargetPower = 0.0
         }
 
-        // Check if power is at target
+        // Check if power is at or above target (overshoot is progress)
         let currentFraction = state.thermalPowerFraction
-        if abs(currentFraction - targetFraction) < powerTolerance {
+        if currentFraction >= targetFraction - powerTolerance {
             timeAtTargetPower += dt
         } else {
             timeAtTargetPower = max(timeAtTargetPower - dt * 0.5, 0.0)

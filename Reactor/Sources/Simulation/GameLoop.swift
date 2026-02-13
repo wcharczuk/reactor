@@ -115,6 +115,11 @@ final class GameLoop {
             AuxiliarySystems.step(state: state, dt: auxDt)
         }
 
+        // --- Process alarms (every 60 substeps, ~1s) ---
+        if substepCounter % ordersInterval == 0 {
+            SafetySystem.checkProcessAlarms(state: state)
+        }
+
         // --- Orders (every 60 substeps, ~1s) ---
         if substepCounter % ordersInterval == 0 {
             let ordersDt = dt * Double(ordersInterval)

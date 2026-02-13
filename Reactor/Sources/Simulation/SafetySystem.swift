@@ -6,14 +6,15 @@ enum SafetySystem {
     // MARK: - SCRAM Setpoints
 
     private static let highNeutronPowerSetpoint: Double = 1.03     // 103% of full power
-    private static let highPowerRateSetpoint: Double = 0.10        // 10%/s
-    private static let lowPrimaryPressureSetpoint: Double = 9.0    // MPa
+    private static let highPowerRateSetpoint: Double = 0.15        // 15%/s
+    private static let lowPrimaryPressureSetpoint: Double = 7.0    // MPa
     private static let highPrimaryPressureSetpoint: Double = 11.5  // MPa
-    private static let lowPrimaryFlowSetpoint: Double = 0.80       // 80% of rated
+    private static let lowPrimaryFlowSetpoint: Double = 0.50       // 50% of rated
     private static let lowSGLevelSetpoint: Double = 20.0           // %
     private static let highFuelTempSetpoint: Double = 2500.0       // degC
 
-    // Previous neutron density for rate calculation
+    // Smoothed power rate (exponential moving average over ~1 second)
+    private static var smoothedRate: Double = 0.0
     private static var previousNeutronDensity: Double = 1e-8
     private static var previousTime: Double = 0.0
 
@@ -51,10 +52,15 @@ enum SafetySystem {
             return
         }
 
-        // 2. High power rate (log rate)
+        // 2. High power rate (log rate) — smoothed over ~1s, bypassed below 30% FP
         if dt > 1e-6 {
-            let rate = (state.neutronDensity - previousNeutronDensity) / dt
-            if rate > highPowerRateSetpoint {
+            let instantRate = (state.neutronDensity - previousNeutronDensity) / dt
+            // Exponential moving average with ~1 second time constant
+            let rateTau: Double = 1.0
+            let rateAlpha = min(dt / rateTau, 1.0)
+            smoothedRate = smoothedRate * (1.0 - rateAlpha) + instantRate * rateAlpha
+
+            if state.thermalPowerFraction > 0.30 && smoothedRate > highPowerRateSetpoint {
                 initiateScram(state: state, reason: "HIGH LOG RATE (>\(Int(highPowerRateSetpoint * 100))%/s)")
                 return
             }
@@ -62,8 +68,8 @@ enum SafetySystem {
         previousNeutronDensity = state.neutronDensity
         previousTime = state.elapsedTime
 
-        // 3. Low primary pressure (bypassed during startup — only above 15% power)
-        if state.thermalPowerFraction > 0.15 && state.primaryPressure < lowPrimaryPressureSetpoint {
+        // 3. Low primary pressure (bypassed during startup — only above 30% power)
+        if state.thermalPowerFraction > 0.30 && state.primaryPressure < lowPrimaryPressureSetpoint {
             initiateScram(state: state, reason: "LOW PHT PRESSURE (<\(lowPrimaryPressureSetpoint) MPa)")
             return
         }
@@ -74,8 +80,8 @@ enum SafetySystem {
             return
         }
 
-        // 5. Low primary flow (bypassed during startup — only above 15% power)
-        if state.thermalPowerFraction > 0.15 {
+        // 5. Low primary flow (bypassed during startup — only above 50% power)
+        if state.thermalPowerFraction > 0.50 {
             let flowFraction = state.primaryFlowRate / CANDUConstants.totalRatedFlow
             if flowFraction < lowPrimaryFlowSetpoint {
                 initiateScram(state: state, reason: "LOW PHT FLOW (<\(Int(lowPrimaryFlowSetpoint * 100))%)")
@@ -85,7 +91,7 @@ enum SafetySystem {
 
         // 6. Low SG level (any SG)
         for i in 0..<CANDUConstants.sgCount {
-            if state.sgLevels[i] < lowSGLevelSetpoint && state.thermalPowerFraction > 0.15 {
+            if state.sgLevels[i] < lowSGLevelSetpoint && state.thermalPowerFraction > 0.30 {
                 initiateScram(state: state, reason: "LOW SG \(i + 1) LEVEL (<\(Int(lowSGLevelSetpoint))%)")
                 return
             }
@@ -155,6 +161,45 @@ enum SafetySystem {
         // Reset the rate monitoring
         previousNeutronDensity = state.neutronDensity
         previousTime = state.elapsedTime
+    }
+
+    // MARK: - Process Alarms (non-SCRAM warnings)
+
+    /// Check process conditions and raise warning/alarm level alerts.
+    /// Called periodically (not every substep) to avoid spam.
+    static func checkProcessAlarms(state: ReactorState) {
+        // SG level alarms
+        let sgAvg = state.sgLevels.reduce(0.0, +) / Double(state.sgLevels.count)
+        raiseOnCondition(state: state, key: "SG_LEVEL_LOW",
+                         condition: sgAvg < 15 && state.thermalPower > 1.0,
+                         message: "SG LEVEL LOW (<15%)", severity: .alarm)
+        raiseOnCondition(state: state, key: "SG_LEVEL_WARN",
+                         condition: sgAvg < 30 && sgAvg >= 15 && state.thermalPower > 1.0,
+                         message: "SG LEVEL DECREASING (<30%)", severity: .warning)
+
+        // High fuel temperature warning (before SCRAM)
+        raiseOnCondition(state: state, key: "FUEL_TEMP_HIGH",
+                         condition: state.fuelTemp > 2200 && state.fuelTemp <= 2500,
+                         message: "FUEL TEMP HIGH (>\(Int(state.fuelTemp)) DEG C)", severity: .warning)
+
+        // High fuel temperature alarm
+        raiseOnCondition(state: state, key: "FUEL_TEMP_ALARM",
+                         condition: state.fuelTemp > 2500,
+                         message: "FUEL TEMP VERY HIGH (>\(Int(state.fuelTemp)) DEG C)", severity: .alarm)
+    }
+
+    /// Raise a process alarm once when condition becomes true; clear when false.
+    private static func raiseOnCondition(state: ReactorState, key: String,
+                                          condition: Bool, message: String,
+                                          severity: AlarmEntry.AlarmSeverity) {
+        if condition {
+            if !state.raisedProcessAlarms.contains(key) {
+                state.addAlarm(message: message, severity: severity)
+                state.raisedProcessAlarms.insert(key)
+            }
+        } else {
+            state.raisedProcessAlarms.remove(key)
+        }
     }
 
     // MARK: - Decay Heat (Utility)

@@ -9,7 +9,7 @@ enum SecondaryLoop {
     private static let latentHeat: Double = 1850.0
 
     /// Specific enthalpy drop across turbine (kJ/kg)
-    private static let turbineEnthalpyDrop: Double = 800.0
+    private static let turbineEnthalpyDrop: Double = 2090.0
 
     /// Specific heat of water (kJ/(kg*degC))
     private static let cpWater: Double = 4.18
@@ -120,7 +120,7 @@ enum SecondaryLoop {
             targetPressure = state.steamPressure * (1.0 - decayRate)
         }
 
-        state.steamPressure = max(targetPressure, 0.1)
+        state.steamPressure = max(targetPressure, 0.0004)
         state.steamPressure = min(state.steamPressure, 6.0) // safety relief valves
 
         // Steam temperature = saturation temperature at current pressure
@@ -163,12 +163,11 @@ enum SecondaryLoop {
                 // Grid-connected: frequency locked to grid, RPM = 1800
                 targetRPM = CANDUConstants.turbineRatedRPM
             } else {
-                // Free-spinning: RPM depends on steam power vs friction
+                // Free-spinning (no generator load): RPM proportional to sqrt of
+                // steam power vs friction/windage. Continuous from 0 to rated RPM.
                 let frictionPower: Double = 5.0 // MW friction/windage losses
-                let netPower = mechPowerMW - frictionPower
-                if netPower > 0 {
-                    // Accelerating
-                    targetRPM = CANDUConstants.turbineRatedRPM * min(sqrt(mechPowerMW / 300.0), 1.1)
+                if mechPowerMW > 0.01 {
+                    targetRPM = CANDUConstants.turbineRatedRPM * min(sqrt(mechPowerMW / frictionPower), 1.0)
                 } else {
                     targetRPM = 0.0
                 }
@@ -224,12 +223,26 @@ enum SecondaryLoop {
     private static func updateFeedPumps(state: ReactorState, dt: Double) {
         // Each running feed pump provides feedwater flow
         // Flow rate depends on differential pressure (SG pressure - feed header pressure)
-        let ratedFlowPerPump = CANDUConstants.steamFlowRated / 3.0 // 3 pumps for rated flow
+        let ratedFlowPerPump = CANDUConstants.steamFlowRated / 2.0 // 2 pumps for rated flow, 3rd for margin
+
+        // SG level feedback: increase feed when level drops, decrease when high
+        let avgSGLevel = state.sgLevels.reduce(0.0, +) / Double(CANDUConstants.sgCount)
+        let levelError = (CANDUConstants.sgLevelNominal - avgSGLevel) / 100.0 // -0.5 to +0.5
+        let levelCorrection = 1.0 + levelError * 5.0 // ±250% adjustment for ±50% error
+
+        // How many feed pumps are running?
+        let runningFeedPumps = state.feedPumps.filter { $0.running }.count
 
         for i in 0..<3 {
             if state.feedPumps[i].running {
-                // Feed pump flow scales with the steam demand
-                let targetFlow = ratedFlowPerPump * min(state.thermalPowerFraction * 1.1, 1.0)
+                // Feed pump flow tracks actual steam generation, split among running pumps
+                let demandPerPump = runningFeedPumps > 0
+                    ? state.steamFlow / Double(runningFeedPumps)
+                    : 0.0
+                let demandFlow = min(demandPerPump, ratedFlowPerPump)
+                // Minimum flow to maintain SG level when it drifts below nominal
+                let minFlow: Double = levelError > 0.01 ? ratedFlowPerPump * 0.05 : 0.0
+                let targetFlow = max(demandFlow * levelCorrection, minFlow)
                 let tau: Double = 10.0
                 let alpha = min(dt / tau, 1.0)
                 state.feedPumps[i].flowRate = state.feedPumps[i].flowRate * (1.0 - alpha) + targetFlow * alpha
@@ -244,19 +257,18 @@ enum SecondaryLoop {
     // MARK: - Steam Tables (Simplified)
 
     /// Saturation temperature in degC for a given pressure in MPa.
-    /// Simplified correlation valid for 0.1 - 6 MPa range.
+    /// Power-law correlation: fits 0.1-10 MPa within ±5°C of real steam tables.
+    ///   0.1 MPa → 100°C, 1.0 MPa → 178°C, 4.7 MPa → 262°C, 10 MPa → 316°C
     static func saturationTemperature(pressureMPa: Double) -> Double {
-        let pClamped = min(max(pressureMPa, 0.01), 22.0)
-        // Antoine-like correlation: T_sat ~ 100 + 28 * ln(P_MPa / 0.1)
-        // This gives: 0.1 MPa -> 100C, 1.0 MPa -> 164C, 4.7 MPa -> 259C, 10 MPa -> 311C
-        return 100.0 + 28.0 * log(pClamped / 0.1)
+        let pClamped = min(max(pressureMPa, 0.0001), 22.0)
+        return 100.0 * pow(pClamped / 0.1, 0.25)
     }
 
     /// Saturation pressure in MPa for a given temperature in degC.
-    /// Inverse of the saturation temperature correlation.
+    /// Inverse of the power-law saturation temperature correlation.
     static func saturationPressure(tempC: Double) -> Double {
-        // P = 0.1 * exp((T - 100) / 28)
-        let pressure = 0.1 * exp((tempC - 100.0) / 28.0)
-        return min(max(pressure, 0.001), 22.0)
+        let tClamped = min(max(tempC, 10.0), 370.0)
+        let pressure = 0.1 * pow(tClamped / 100.0, 4.0)
+        return min(max(pressure, 0.0001), 22.0)
     }
 }

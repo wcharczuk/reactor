@@ -25,6 +25,8 @@ class TerminalRenderer {
     private let bytesPerRow: Int
     private let font: CTFont
     private let fontDescent: CGFloat
+    private let compactFont: CTFont
+    private let compactFontDescent: CGFloat
     private let colorSpace: CGColorSpace
 
     init(device: MTLDevice) {
@@ -41,6 +43,15 @@ class TerminalRenderer {
         }
         // Cache the font descent so descenders (g, y, p, etc.) are fully visible
         self.fontDescent = ceil(CTFontGetDescent(font))
+
+        // Compact font for hint text (~60% of normal size, fits more chars per cell)
+        let compactSize = CGFloat(TerminalRenderer.cellHeight - 2) * 0.6
+        if let menloCompact = CTFontCreateWithName("Menlo" as CFString, compactSize, nil) as CTFont? {
+            self.compactFont = menloCompact
+        } else {
+            self.compactFont = CTFontCreateWithName("Courier" as CFString, compactSize, nil)
+        }
+        self.compactFontDescent = ceil(CTFontGetDescent(compactFont))
 
         setupTexture()
         setupContext()
@@ -140,6 +151,24 @@ class TerminalRenderer {
                                             cellWidth: TerminalRenderer.cellWidth,
                                             cellHeight: TerminalRenderer.cellHeight,
                                             textureHeight: TerminalRenderer.textureHeight)
+        }
+
+        // Render compact text strings (smaller font, more chars per line)
+        for entry in buffer.compactStrings {
+            let px = CGFloat(entry.x) * cellW
+            let py = CGFloat(TerminalRenderer.textureHeight) - CGFloat(entry.y + 1) * cellH
+            let fgColor = cgColor(for: entry.fg)
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: compactFont,
+                .foregroundColor: fgColor
+            ]
+            let str = NSAttributedString(string: entry.text, attributes: attrs)
+            let line = CTLineCreateWithAttributedString(str)
+
+            ctx.saveGState()
+            ctx.textPosition = CGPoint(x: px + 1, y: py + compactFontDescent)
+            CTLineDraw(line, ctx)
+            ctx.restoreGState()
         }
 
         // Upload to Metal texture

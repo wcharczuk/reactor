@@ -133,10 +133,11 @@ enum Reactivity {
     /// We use neutron density n (normalized to 1.0 = full power) as a proxy for
     /// the fission rate Sigma_f * phi. Concentrations are in arbitrary units
     /// normalized so that equilibrium full-power xenon reactivity matches
-    /// the expected ~28 mk.
+    /// the configured xenonReactivityCoeff (currently -15 mk, simplified from
+    /// the real CANDU-6 value of ~28 mk to fit the available rod worth budget).
     ///
     /// We define a fission rate proxy: F = n * CANDUConstants.ratedThermalPower / ratedThermalPower = n
-    /// and scale yields so equilibrium Xe at n=1 gives xenonReactivity = -28 mk.
+    /// and scale yields so equilibrium Xe at n=1 gives xenonReactivity = xenonReactivityCoeff.
     static func updateXenonIodine(state: ReactorState, dt: Double) {
         let n = state.neutronDensity
         let lambdaI = CANDUConstants.lambdaIodine

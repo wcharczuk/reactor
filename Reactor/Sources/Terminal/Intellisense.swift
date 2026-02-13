@@ -27,7 +27,7 @@ final class Intellisense {
     private let pathEntries: [PathEntry]
 
     /// All valid verbs.
-    private let validVerbs: [String] = ["set", "get", "start", "stop", "scram", "view", "speed", "status", "help", "quit", "exit"]
+    private let validVerbs: [String] = ["set", "get", "start", "stop", "scram", "view", "time", "status", "help", "quit", "exit"]
 
     /// Valid view screen names.
     private let viewScreens: [String] = ["overview", "core", "primary", "secondary", "electrical", "alarms"]
@@ -42,15 +42,15 @@ final class Intellisense {
          4 banks (A-D) of stainless steel rods normally withdrawn from the core.
          Each bank worth ~3.75 mk. Inserted/withdrawn to compensate for xenon
          transients and make small reactivity adjustments during load-following.
-         Path: core.adjuster-rods.bank-{a,b,c,d}.pos (0=out, 100=in)
+         Path: core.adjuster-rods.{1,2,3,4}.pos (0=out, 100=in)
          """),
         ("core.zone-controllers", """
          ZONE CONTROLLERS — Spatial Flux Shaping
          6 vertical compartments in the moderator filled with light water (H2O).
          Light water absorbs neutrons, so raising fill level reduces local flux.
-         Total reactivity worth ~1.5 mk. Used to flatten the flux profile and
+         Total reactivity worth ~7 mk. Used to flatten the flux profile and
          prevent xenon oscillations across the core.
-         Path: core.zone-controllers.zone-{1..6}.fill (0-100%)
+         Path: core.zone-controllers.{1..6}.fill (0-100%)
          """),
         ("core.mca", """
          MECHANICAL CONTROL ABSORBERS (MCA)
@@ -177,10 +177,10 @@ final class Intellisense {
         ))
 
         // --- Core: Adjuster Rods ---
-        for bank in ["bank-a", "bank-b", "bank-c", "bank-d"] {
+        for bank in 1...4 {
             entries.append(PathEntry(
                 path: "core.adjuster-rods.\(bank).pos",
-                description: "Adjuster rod \(bank) position (0=out, 100=in)",
+                description: "Adjuster rod bank \(bank) position (0=out, 100=in)",
                 valueType: .double,
                 range: 0.0...100.0
             ))
@@ -189,7 +189,7 @@ final class Intellisense {
         // --- Core: Zone Controllers ---
         for zone in 1...6 {
             entries.append(PathEntry(
-                path: "core.zone-controllers.zone-\(zone).fill",
+                path: "core.zone-controllers.\(zone).fill",
                 description: "Zone controller \(zone) light water fill level (0-100%)",
                 valueType: .double,
                 range: 0.0...100.0
@@ -351,6 +351,11 @@ final class Intellisense {
             valueType: .readOnly, range: nil
         ))
         entries.append(PathEntry(
+            path: "electrical.grid.sync",
+            description: "Grid sync breaker — start to connect, stop to disconnect",
+            valueType: .toggle, range: nil
+        ))
+        entries.append(PathEntry(
             path: "electrical.station-service",
             description: "Current effective electrical load (MW, read-only)",
             valueType: .readOnly, range: nil
@@ -430,19 +435,19 @@ final class Intellisense {
             }
             return []
 
-        case "speed":
+        case "time":
             if tokens.count < 2 || (tokens.count == 2 && !partialInput.hasSuffix(" ")) {
                 let partial = tokens.count >= 2 ? tokens[1] : ""
                 return validSpeeds
                     .filter { $0.hasPrefix(partial) }
-                    .map { "speed \($0)" }
+                    .map { "time \($0)" }
             }
             return []
 
         case "help":
             if tokens.count < 2 || (tokens.count == 2 && !partialInput.hasSuffix(" ")) {
                 let partial = tokens.count >= 2 ? tokens[1].lowercased() : ""
-                let commandTopics = ["set", "get", "start", "stop", "scram", "view", "speed", "startup", "paths"]
+                let commandTopics = ["set", "get", "start", "stop", "scram", "view", "time", "startup", "paths"]
                 let componentTopics = componentDescriptions.map { $0.prefix }
                 let allTopics = commandTopics + componentTopics
                 return Array(Set(allTopics
@@ -565,7 +570,7 @@ final class Intellisense {
         return Array(Set(results)).sorted()
     }
 
-    /// Generate glob path suggestions (e.g., "core.adjuster-rods.bank-*.pos").
+    /// Generate glob path suggestions (e.g., "core.adjuster-rods.*.pos").
     private func expandableGlobPaths(for verb: String, partialPath: String, includeSettable: Bool) -> [String] {
         var globs: Set<String> = []
 
@@ -580,16 +585,10 @@ final class Intellisense {
         for entry in filteredEntries {
             let components = entry.path.split(separator: ".").map(String.init)
             for (i, comp) in components.enumerated() {
-                // Check if this component matches a pattern like "bank-a", "1", "zone-1"
-                if comp.last?.isNumber == true || ["bank-a", "bank-b", "bank-c", "bank-d"].contains(comp) {
+                // Check if this component is a numeric designator like "1", "2", etc.
+                if comp.last?.isNumber == true {
                     var globComponents = components
-                    if comp.hasPrefix("bank-") {
-                        globComponents[i] = "bank-*"
-                    } else if comp.hasPrefix("zone-") {
-                        globComponents[i] = "zone-*"
-                    } else {
-                        globComponents[i] = "*"
-                    }
+                    globComponents[i] = "*"
                     let globPath = globComponents.joined(separator: ".")
                     if globPath.hasPrefix(partialPath) {
                         globs.insert("\(verb) \(globPath)")
@@ -609,7 +608,7 @@ final class Intellisense {
 
         switch lowered {
         case "set":
-            return "SET <path> <value> - Set a system parameter. Example: set core.adjuster-rods.bank-a.pos 0"
+            return "SET <path> <value> - Set a system parameter. Example: set core.adjuster-rods.1.pos 0"
 
         case "get":
             return "GET <path> - Read a system parameter. Example: get primary.pump.1.rpm"
@@ -626,8 +625,8 @@ final class Intellisense {
         case "view":
             return "VIEW <screen> - Switch display. Screens: overview, core, primary, secondary, electrical, alarms"
 
-        case "speed":
-            return "SPEED <multiplier> - Set time acceleration. Valid: 0.1, 0.25, 0.5, 1, 2, 5, 10"
+        case "time":
+            return "TIME <multiplier> - Set time acceleration. Valid: 0.1, 0.25, 0.5, 1, 2, 5, 10"
 
         case "status":
             return "STATUS - Display summary of all major reactor parameters."
@@ -637,24 +636,25 @@ final class Intellisense {
             REACTOR STARTUP PROCEDURE:
             Phase 1 — Bootstrap on diesel (10 MW capacity):
             1. Start both diesels       start aux.diesel.*
-            2. (Wait 30s for warmup)    speed 5
+            2. (Wait 30s for warmup)    time 10
             3. CW pump at 10% RPM       set tertiary.pump.1.rpm 150
-            4. Primary pumps at 10%     set primary.pump.1.rpm 150
-               (repeat for pump 2)      set primary.pump.2.rpm 150
+            4. All primary pumps 10%    set primary.pump.*.rpm 150
             5. Start feed pump (~3 MW)  start secondary.feed-pump.1.auto
             6. Withdraw shutoff rods    set core.shutoff-rods.pos 0
             Phase 2 — Achieve criticality:
-            7. Withdraw adjuster rods   set core.adjuster-rods.bank-*.pos 0
-            8. Lower zone controllers   set core.zone-controllers.zone-*.fill 50
-            9. Monitor for criticality  view core
-            Phase 3 — Power ascension:
-            10. Open turbine governor   set secondary.turbine.governor 0.5
-            11. Sync generator to grid when power > 5%
-            12. Ramp pumps with power:  25% → 500 RPM, 50% → 1000 RPM,
-                75% → 1200 RPM, 100% → 1500 RPM (rated)
+            7. Withdraw bank 1          set core.adjuster-rods.1.pos 0
+            8. Ramp primary to 900      set primary.pump.*.rpm 900
+            9. Withdraw bank 2          set core.adjuster-rods.2.pos 0
+            10. Open turbine governor   set secondary.turbine.governor 1.0
+            Phase 3 — Grid sync & power ascension:
+            11. Sync at ~60 Hz          start electrical.grid.sync
+            12. Stop diesels            stop aux.diesel.*
+            13. Start 2 more feed pumps start secondary.feed-pump.*.auto
+            14. Ramp pumps to full      set primary.pump.*.rpm 1500
+            15. Lower zones/withdraw rods to raise power
             Low RPM on diesel conserves power (cube law). After grid sync
             you have unlimited electrical supply to ramp pumps fully.
-            Use 'speed 5' to accelerate time. PageUp/PageDown to scroll.
+            Use 'time 10' to accelerate. PageUp/PageDown to scroll.
             """
 
         case "paths":

@@ -140,31 +140,31 @@ final class CommandDispatcher {
 
         // --- Core: Adjuster Rods (motor-driven, ~60s full stroke) ---
         // User pos: 0=withdrawn(out), 100=inserted(in). Internal: 0=inserted, 1=withdrawn.
-        case "core.adjuster-rods.bank-a.pos":
+        case "core.adjuster-rods.1.pos":
             state.adjusterTargetPositions[0] = 1.0 - value / 100.0
-            return "OK: bank-a target = \(formatValue(value))"
-        case "core.adjuster-rods.bank-b.pos":
+            return "OK: adjuster-rods.1 target = \(formatValue(value))"
+        case "core.adjuster-rods.2.pos":
             state.adjusterTargetPositions[1] = 1.0 - value / 100.0
-            return "OK: bank-b target = \(formatValue(value))"
-        case "core.adjuster-rods.bank-c.pos":
+            return "OK: adjuster-rods.2 target = \(formatValue(value))"
+        case "core.adjuster-rods.3.pos":
             state.adjusterTargetPositions[2] = 1.0 - value / 100.0
-            return "OK: bank-c target = \(formatValue(value))"
-        case "core.adjuster-rods.bank-d.pos":
+            return "OK: adjuster-rods.3 target = \(formatValue(value))"
+        case "core.adjuster-rods.4.pos":
             state.adjusterTargetPositions[3] = 1.0 - value / 100.0
-            return "OK: bank-d target = \(formatValue(value))"
+            return "OK: adjuster-rods.4 target = \(formatValue(value))"
 
         // --- Core: Zone Controllers ---
-        case "core.zone-controllers.zone-1.fill":
+        case "core.zone-controllers.1.fill":
             return setZoneFill(index: 0, zone: 1, value: value)
-        case "core.zone-controllers.zone-2.fill":
+        case "core.zone-controllers.2.fill":
             return setZoneFill(index: 1, zone: 2, value: value)
-        case "core.zone-controllers.zone-3.fill":
+        case "core.zone-controllers.3.fill":
             return setZoneFill(index: 2, zone: 3, value: value)
-        case "core.zone-controllers.zone-4.fill":
+        case "core.zone-controllers.4.fill":
             return setZoneFill(index: 3, zone: 4, value: value)
-        case "core.zone-controllers.zone-5.fill":
+        case "core.zone-controllers.5.fill":
             return setZoneFill(index: 4, zone: 5, value: value)
-        case "core.zone-controllers.zone-6.fill":
+        case "core.zone-controllers.6.fill":
             return setZoneFill(index: 5, zone: 6, value: value)
 
         // --- Core: MCA (motor-driven, ~30s full stroke) ---
@@ -184,13 +184,7 @@ final class CommandDispatcher {
             }
             state.shutoffRodInsertionFraction = internal01
             state.shutoffRodsInserted = internal01 > 0.5
-            if value < 1 {
-                return "OK: Shutoff rods WITHDRAWN"
-            } else if value > 99 {
-                return "OK: Shutoff rods FULLY INSERTED"
-            } else {
-                return "OK: Shutoff rods insertion = \(formatValue(value))"
-            }
+            return "OK: Shutoff rods pos = \(formatValue(value))%"
 
         // --- Primary: Pumps ---
         case "primary.pump.1.rpm":
@@ -330,28 +324,28 @@ final class CommandDispatcher {
             return "Xenon reactivity = \(formatValue(state.xenonReactivity)) mk"
 
         // --- Core: Adjuster Rods (user pos: 0=out, 100=in; internal: 0=in, 1=out) ---
-        case "core.adjuster-rods.bank-a.pos":
-            return rodGetString("bank-a", (1.0 - state.adjusterPositions[0]) * 100.0, (1.0 - state.adjusterTargetPositions[0]) * 100.0)
-        case "core.adjuster-rods.bank-b.pos":
-            return rodGetString("bank-b", (1.0 - state.adjusterPositions[1]) * 100.0, (1.0 - state.adjusterTargetPositions[1]) * 100.0)
-        case "core.adjuster-rods.bank-c.pos":
-            return rodGetString("bank-c", (1.0 - state.adjusterPositions[2]) * 100.0, (1.0 - state.adjusterTargetPositions[2]) * 100.0)
-        case "core.adjuster-rods.bank-d.pos":
-            return rodGetString("bank-d", (1.0 - state.adjusterPositions[3]) * 100.0, (1.0 - state.adjusterTargetPositions[3]) * 100.0)
+        case "core.adjuster-rods.1.pos":
+            return rodGetString("adjuster-rods.1", (1.0 - state.adjusterPositions[0]) * 100.0, (1.0 - state.adjusterTargetPositions[0]) * 100.0)
+        case "core.adjuster-rods.2.pos":
+            return rodGetString("adjuster-rods.2", (1.0 - state.adjusterPositions[1]) * 100.0, (1.0 - state.adjusterTargetPositions[1]) * 100.0)
+        case "core.adjuster-rods.3.pos":
+            return rodGetString("adjuster-rods.3", (1.0 - state.adjusterPositions[2]) * 100.0, (1.0 - state.adjusterTargetPositions[2]) * 100.0)
+        case "core.adjuster-rods.4.pos":
+            return rodGetString("adjuster-rods.4", (1.0 - state.adjusterPositions[3]) * 100.0, (1.0 - state.adjusterTargetPositions[3]) * 100.0)
 
         // --- Core: Zone Controllers ---
-        case "core.zone-controllers.zone-1.fill":
-            return "zone-1 fill = \(formatValue(state.zoneControllerFills[0]))%"
-        case "core.zone-controllers.zone-2.fill":
-            return "zone-2 fill = \(formatValue(state.zoneControllerFills[1]))%"
-        case "core.zone-controllers.zone-3.fill":
-            return "zone-3 fill = \(formatValue(state.zoneControllerFills[2]))%"
-        case "core.zone-controllers.zone-4.fill":
-            return "zone-4 fill = \(formatValue(state.zoneControllerFills[3]))%"
-        case "core.zone-controllers.zone-5.fill":
-            return "zone-5 fill = \(formatValue(state.zoneControllerFills[4]))%"
-        case "core.zone-controllers.zone-6.fill":
-            return "zone-6 fill = \(formatValue(state.zoneControllerFills[5]))%"
+        case "core.zone-controllers.1.fill":
+            return "zone-controllers.1 fill = \(formatValue(state.zoneControllerFills[0]))%"
+        case "core.zone-controllers.2.fill":
+            return "zone-controllers.2 fill = \(formatValue(state.zoneControllerFills[1]))%"
+        case "core.zone-controllers.3.fill":
+            return "zone-controllers.3 fill = \(formatValue(state.zoneControllerFills[2]))%"
+        case "core.zone-controllers.4.fill":
+            return "zone-controllers.4 fill = \(formatValue(state.zoneControllerFills[3]))%"
+        case "core.zone-controllers.5.fill":
+            return "zone-controllers.5 fill = \(formatValue(state.zoneControllerFills[4]))%"
+        case "core.zone-controllers.6.fill":
+            return "zone-controllers.6 fill = \(formatValue(state.zoneControllerFills[5]))%"
 
         // --- Core: MCA (user pos: 0=out, 100=in; internal: 0=in, 1=out) ---
         case "core.mca.1.pos":
@@ -510,6 +504,20 @@ final class CommandDispatcher {
             state.feedPumps[2].running = true
             return "OK: Feed pump 3 started."
 
+        case "electrical.grid.sync":
+            let freqError = abs(state.generatorFrequency - 60.0)
+            if state.generatorConnected {
+                return "Generator already connected to grid."
+            }
+            if state.generatorFrequency < 1.0 {
+                return "ERROR: Generator not spinning. Open turbine governor first."
+            }
+            if freqError > 0.5 {
+                return "ERROR: Frequency \(String(format: "%.2f", state.generatorFrequency)) Hz — must be within 0.5 Hz of 60 Hz to sync."
+            }
+            state.generatorConnected = true
+            return "OK: Generator synchronized to grid."
+
         // Pumps — redirect to 'set' command
         case "primary.pump.1.rpm", "primary.pump.2.rpm",
              "primary.pump.3.rpm", "primary.pump.4.rpm":
@@ -546,13 +554,17 @@ final class CommandDispatcher {
         case "aux.diesel.1.state":
             state.dieselGenerators[0].running = false
             state.dieselGenerators[0].available = false
+            state.dieselGenerators[0].loaded = false
             state.dieselGenerators[0].power = 0.0
+            state.dieselGenerators[0].startTime = -1.0
             return "OK: Diesel generator 1 stopped."
 
         case "aux.diesel.2.state":
             state.dieselGenerators[1].running = false
             state.dieselGenerators[1].available = false
+            state.dieselGenerators[1].loaded = false
             state.dieselGenerators[1].power = 0.0
+            state.dieselGenerators[1].startTime = -1.0
             return "OK: Diesel generator 2 stopped."
 
         case "secondary.feed-pump.1.auto":
@@ -567,6 +579,13 @@ final class CommandDispatcher {
             state.feedPumps[2].running = false
             state.feedPumps[2].flowRate = 0.0
             return "OK: Feed pump 3 stopped."
+
+        case "electrical.grid.sync":
+            if !state.generatorConnected {
+                return "Generator not connected to grid."
+            }
+            state.generatorConnected = false
+            return "OK: Generator disconnected from grid."
 
         case "primary.pump.1.rpm", "primary.pump.2.rpm",
              "primary.pump.3.rpm", "primary.pump.4.rpm":
@@ -590,6 +609,7 @@ final class CommandDispatcher {
         state.scramTime = state.elapsedTime
         state.shutdownTime = state.elapsedTime
         state.shutoffRodsInserted = true
+        state.timeAcceleration = 1.0
         // Shutoff rod insertion will be animated by the simulation engine
         // but we immediately flag the scram.
         state.addAlarm(message: "SCRAM INITIATED - All shutoff rods inserting", severity: .trip)
@@ -657,7 +677,7 @@ final class CommandDispatcher {
     private func handleHelp(topic: String?) -> String {
         guard let topic = topic else {
             return """
-            Commands: set, get, start, stop, scram, view, speed, status, help, quit
+            Commands: set, get, start, stop, scram, view, time, status, help, quit
             Pumps use 'set' to control RPM. 'start/stop' for diesels and feed pumps.
             Type 'help startup' for startup procedure. Type 'help paths' for all noun paths.
             Use Tab for auto-completion. PageUp/PageDown to scroll output.
@@ -681,9 +701,7 @@ final class CommandDispatcher {
     /// Resolve a path that may contain glob wildcards into concrete paths.
     ///
     /// Supported globs:
-    /// - `bank-*` expands to bank-a, bank-b, bank-c, bank-d
-    /// - `zone-*` expands to zone-1 through zone-6
-    /// - Numeric `*` expands to all valid indices for that component
+    /// - `*` expands to all valid indices for that component (e.g. 1-4 for adjuster-rods, 1-6 for zone-controllers)
     private func resolveGlob(_ path: String) -> [String] {
         // If path contains no wildcard, check if it is a known path directly
         if !path.contains("*") {
@@ -769,16 +787,16 @@ final class CommandDispatcher {
     /// Returns just the current numeric value for a settable path (used by intellisense range hints).
     func currentValueString(for path: String) -> String? {
         switch path {
-        case "core.adjuster-rods.bank-a.pos": return formatValue((1.0 - state.adjusterPositions[0]) * 100.0)
-        case "core.adjuster-rods.bank-b.pos": return formatValue((1.0 - state.adjusterPositions[1]) * 100.0)
-        case "core.adjuster-rods.bank-c.pos": return formatValue((1.0 - state.adjusterPositions[2]) * 100.0)
-        case "core.adjuster-rods.bank-d.pos": return formatValue((1.0 - state.adjusterPositions[3]) * 100.0)
-        case "core.zone-controllers.zone-1.fill": return formatValue(state.zoneControllerFills[0])
-        case "core.zone-controllers.zone-2.fill": return formatValue(state.zoneControllerFills[1])
-        case "core.zone-controllers.zone-3.fill": return formatValue(state.zoneControllerFills[2])
-        case "core.zone-controllers.zone-4.fill": return formatValue(state.zoneControllerFills[3])
-        case "core.zone-controllers.zone-5.fill": return formatValue(state.zoneControllerFills[4])
-        case "core.zone-controllers.zone-6.fill": return formatValue(state.zoneControllerFills[5])
+        case "core.adjuster-rods.1.pos": return formatValue((1.0 - state.adjusterPositions[0]) * 100.0)
+        case "core.adjuster-rods.2.pos": return formatValue((1.0 - state.adjusterPositions[1]) * 100.0)
+        case "core.adjuster-rods.3.pos": return formatValue((1.0 - state.adjusterPositions[2]) * 100.0)
+        case "core.adjuster-rods.4.pos": return formatValue((1.0 - state.adjusterPositions[3]) * 100.0)
+        case "core.zone-controllers.1.fill": return formatValue(state.zoneControllerFills[0])
+        case "core.zone-controllers.2.fill": return formatValue(state.zoneControllerFills[1])
+        case "core.zone-controllers.3.fill": return formatValue(state.zoneControllerFills[2])
+        case "core.zone-controllers.4.fill": return formatValue(state.zoneControllerFills[3])
+        case "core.zone-controllers.5.fill": return formatValue(state.zoneControllerFills[4])
+        case "core.zone-controllers.6.fill": return formatValue(state.zoneControllerFills[5])
         case "core.mca.1.pos": return formatValue((1.0 - state.mcaPositions[0]) * 100.0)
         case "core.mca.2.pos": return formatValue((1.0 - state.mcaPositions[1]) * 100.0)
         case "core.shutoff-rods.pos": return formatValue(state.shutoffRodInsertionFraction * 100.0)

@@ -80,6 +80,10 @@ final class TerminalBuffer {
     /// Optional compact raster diagram data for the overview.
     var overviewDiagram: CoreDiagramData?
 
+    /// Compact text strings rendered at a smaller font (bypassing the character grid).
+    /// Each entry specifies a grid position, text, and color.
+    var compactStrings: [(x: Int, y: Int, text: String, fg: TerminalColor)] = []
+
     // MARK: Init
 
     init() {
@@ -112,6 +116,7 @@ final class TerminalBuffer {
         cells = [TerminalCell](repeating: .blank, count: TerminalBuffer.width * TerminalBuffer.height)
         coreDiagram = nil
         overviewDiagram = nil
+        compactStrings.removeAll()
     }
 
     // MARK: Put Character

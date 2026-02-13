@@ -99,28 +99,16 @@ struct TerminalLayout {
         buffer.drawBox(x: 0, y: ordersTop, width: leftPanelWidth, height: ordersHeight, fg: .dim)
         buffer.putString(x: 2, y: ordersTop, string: " ORDERS ", fg: .bright)
 
-        // Display current order (wrap if needed)
-        let orderText = state.currentOrder
-        let maxWidth = leftPanelWidth - 4
+        // Display current order in compact font (fits ~55 chars — no wrapping needed)
         var nextRow = ordersTop + 1
-        if orderText.count <= maxWidth {
-            buffer.putString(x: 2, y: nextRow, string: orderText, fg: .bright)
-            nextRow += 1
-        } else {
-            let line1 = String(orderText.prefix(maxWidth))
-            let line2 = String(orderText.dropFirst(maxWidth).prefix(maxWidth))
-            buffer.putString(x: 2, y: nextRow, string: line1, fg: .bright)
-            nextRow += 1
-            buffer.putString(x: 2, y: nextRow, string: line2, fg: .bright)
-            nextRow += 1
-        }
+        buffer.compactStrings.append((x: 2, y: nextRow, text: String(state.currentOrder.prefix(55)), fg: .normal))
+        nextRow += 1
 
-        // Display contextual hint
+        // Display contextual hints in compact font, dimmer than the order
         let hints = orderHint(state: state)
         for hint in hints {
             if nextRow >= ordersTop + ordersHeight - 1 { break }
-            let truncated = String(hint.prefix(maxWidth))
-            buffer.putString(x: 2, y: nextRow, string: truncated, fg: .normal)
+            buffer.compactStrings.append((x: 2, y: nextRow, text: String(hint.prefix(55)), fg: .dim))
             nextRow += 1
         }
     }
@@ -134,24 +122,22 @@ struct TerminalLayout {
         buffer.putString(x: 2, y: alarmsTop, string: " ALARMS ", fg: alarmTitleColor)
 
         let maxLines = alarmsHeight - 2
-        let maxWidth = leftPanelWidth - 4
 
-        // Show most recent alarms (reversed so newest is at top)
+        // Show most recent alarms in compact font (fits ~55 chars per line)
         let recentAlarms = state.alarms.suffix(maxLines).reversed()
         var row = alarmsTop + 1
         for alarm in recentAlarms {
             if row >= alarmsTop + alarmsHeight - 1 { break }
             let timeStr = formatElapsedTime(alarm.time)
             let msg = "\(timeStr) \(alarm.message)"
-            let truncated = String(msg.prefix(maxWidth))
             let color: TerminalColor = alarm.message.contains("[TRIP]") ? .danger :
                                        alarm.message.contains("[ALARM]") ? .warning : .normal
-            buffer.putString(x: 2, y: row, string: truncated, fg: color)
+            buffer.compactStrings.append((x: 2, y: row, text: String(msg.prefix(55)), fg: color))
             row += 1
         }
 
         if state.alarms.isEmpty {
-            buffer.putString(x: 2, y: alarmsTop + 1, string: "No active alarms.", fg: .dim)
+            buffer.compactStrings.append((x: 2, y: alarmsTop + 1, text: "No active alarms.", fg: .dim))
         }
     }
 
@@ -170,17 +156,18 @@ struct TerminalLayout {
         row += 1
 
         // Adjuster rod positions by bank
-        let bankLabels = ["A", "B", "C", "D"]
+        let bankLabels = ["1", "2", "3", "4"]
         let adjStr = bankLabels.enumerated().map { (i, name) in
-            String(format: "%@:%02.0f", name, (1.0 - state.adjusterPositions[i]) * 100.0)
+            String(format: "%@:%2.0f", name, (1.0 - state.adjusterPositions[i]) * 100.0)
         }.joined(separator: " ")
         putStatusLine(buffer: buffer, x: col1, y: row, label: "Adj:", value: adjStr, maxWidth: maxWidth)
         row += 1
 
-        // Shutoff rods
-        let sorStr = state.scramActive ? "SCRAM" : (state.shutoffRodsInserted ? "IN" : "OUT")
+        // Shutoff rods (0%=out, 100%=in — same convention as adjusters)
+        let sorPct = state.shutoffRodInsertionFraction * 100.0
+        let sorStr = state.scramActive ? String(format: "SCRAM %.0f%%", sorPct) : String(format: "%.0f%%", sorPct)
         putStatusLine(buffer: buffer, x: col1, y: row, label: "SORs:", value: sorStr, maxWidth: maxWidth,
-                      fg: state.scramActive ? .danger : .normal)
+                      fg: state.scramActive ? .danger : (sorPct > 50 ? .warning : .normal))
         row += 1
 
         // Xenon worth
@@ -402,32 +389,23 @@ struct TerminalLayout {
         }
 
         // Rod + SOR summary line
-        let ovBankLabels = ["A", "B", "C", "D"]
+        let ovBankLabels = ["1", "2", "3", "4"]
         var adjLine = "Adj "
         for (i, name) in ovBankLabels.enumerated() {
-            adjLine += String(format: "%@:%02.0f%%", name, (1.0 - state.adjusterPositions[i]) * 100.0)
+            adjLine += String(format: "%@:%2.0f%%", name, (1.0 - state.adjusterPositions[i]) * 100.0)
             if i < 3 { adjLine += " " }
         }
         adjLine += "  "
         for i in 0..<2 {
-            adjLine += String(format: "MCA%d:%02.0f%%", i + 1, (1.0 - state.mcaPositions[i]) * 100.0)
+            adjLine += String(format: "MCA%d:%2.0f%%", i + 1, (1.0 - state.mcaPositions[i]) * 100.0)
             if i < 1 { adjLine += " " }
         }
         buffer.putString(x: zoneTextX, y: coreRow, string: adjLine, fg: .normal)
         coreRow += 1
 
-        let ovSorStr: String
-        let ovSorColor: TerminalColor
-        if state.scramActive {
-            ovSorStr = "SCRAM"
-            ovSorColor = .danger
-        } else if state.shutoffRodsInserted {
-            ovSorStr = "IN"
-            ovSorColor = .warning
-        } else {
-            ovSorStr = "OUT"
-            ovSorColor = .dim
-        }
+        let ovSorPct = state.shutoffRodInsertionFraction * 100.0
+        let ovSorStr = state.scramActive ? String(format: "SCRAM %.0f%%", ovSorPct) : String(format: "%.0f%%", ovSorPct)
+        let ovSorColor: TerminalColor = state.scramActive ? .danger : (ovSorPct > 50 ? .warning : .dim)
         let ovTotalStr = String(format: "Total: %+.2f mk", state.totalReactivity)
         let ovTotalColor = deviationColor(value: state.totalReactivity, nominal: 0, warning: 3, danger: 7)
         buffer.putString(x: zoneTextX, y: coreRow, string: "SOR: \(ovSorStr)", fg: ovSorColor)
@@ -447,9 +425,9 @@ struct TerminalLayout {
         let fuelT = String(format: "Fuel: %.0f\u{00B0}C", state.fuelTemp)
         let reactStr = String(format: "%+.2f mk", state.totalReactivity)
         let coreActive = state.thermalPower > 1.0
-        let coreFuelColor = thresholdColor(value: state.fuelTemp, warning: 2200, danger: 2600)
-        let coreReactColor = deviationColor(value: state.totalReactivity, nominal: 0, warning: 3, danger: 7)
-        let corePowerColor = thresholdColor(value: state.thermalPowerFraction, warning: 1.03, danger: 1.08)
+        let coreFuelColor = coreActive ? thresholdColor(value: state.fuelTemp, warning: 2200, danger: 2600) : .normal
+        let coreReactColor = coreActive ? deviationColor(value: state.totalReactivity, nominal: 0, warning: 3, danger: 7) : .normal
+        let corePowerColor = coreActive ? thresholdColor(value: state.thermalPowerFraction, warning: 1.03, danger: 1.08) : .normal
         let coreBorder: TerminalColor? = coreFuelColor == .danger || coreReactColor == .danger || corePowerColor == .danger ? .danger :
                                           coreFuelColor == .warning || coreReactColor == .warning || corePowerColor == .warning ? .warning : nil
         drawComponent(buffer: buffer, x: coreX, y: topY, w: bw, h: bh,
@@ -473,6 +451,10 @@ struct TerminalLayout {
             let ch = state.primaryPumps[i].running ? String(spinner(t, offset: i)) : "\u{00B7}"
             phtSpinners += " \(ch)"
         }
+        let phtAvgRPM = phtRunning > 0
+            ? state.primaryPumps.filter { $0.running }.map { $0.rpm }.reduce(0, +) / Double(phtRunning)
+            : 0.0
+        let phtRPMStr = String(format: "%.0f RPM", phtAvgRPM)
         let phtFlow = String(format: "%.0f kg/s", state.primaryFlowRate)
         let phtPressure = String(format: "%.1f MPa", state.primaryPressure)
         let phtPressColor = deviationColor(value: state.primaryPressure, nominal: CANDUConstants.primaryPressureRated, warning: 1.5, danger: 3.0)
@@ -482,7 +464,7 @@ struct TerminalLayout {
                       title: "PRIMARY PUMPS",
                       lines: [
                           ("P:" + phtSpinners, phtRunning > 0 ? .bright : .dim),
-                          (phtFlow, .normal),
+                          (phtRPMStr + "  " + phtFlow, .normal),
                           (phtPressure, phtPressColor),
                           ("\(phtRunning)/4 running", phtPumpColor),
                       ], active: phtRunning > 0, borderColor: phtBorder)
@@ -577,12 +559,14 @@ struct TerminalLayout {
             let ch = state.feedPumps[i].running ? String(spinner(t, offset: i + 5)) : "\u{00B7}"
             fpSpinners += " \(ch)"
         }
+        let totalFeedFlow = state.feedPumps.reduce(0.0) { $0 + $1.flowRate }
+        let fpFlowStr = String(format: "%.0f kg/s", totalFeedFlow)
         drawComponent(buffer: buffer, x: sgX, y: botY, w: bw, h: bh,
                       title: "FEED PUMPS",
                       lines: [
                           ("P:" + fpSpinners, fpRunning > 0 ? .bright : .dim),
                           ("\(fpRunning)/3 running", .normal),
-                          (String(format: "FW: %.0f\u{00B0}C", state.feedwaterTemp), .normal),
+                          (fpFlowStr, .normal),
                       ], active: fpRunning > 0)
 
         // Arrow Condenser → Feed Pumps (left-pointing)
@@ -608,12 +592,16 @@ struct TerminalLayout {
             let ch = state.coolingWaterPumps[i].running ? String(spinner(t, offset: i + 8)) : "\u{00B7}"
             cwSpinners += " \(ch)"
         }
+        let cwAvgRPM = cwRunning > 0
+            ? state.coolingWaterPumps.filter { $0.running }.map { $0.rpm }.reduce(0, +) / Double(cwRunning)
+            : 0.0
+        let cwRPMStr = String(format: "%.0f RPM", cwAvgRPM)
         let cwFlowStr = String(format: "%.0f kg/s", state.coolingWaterFlow)
         drawComponent(buffer: buffer, x: genX, y: botY, w: bw, h: bh,
                       title: "TERTIARY PUMPS",
                       lines: [
                           ("P:" + cwSpinners, cwRunning > 0 ? .bright : .dim),
-                          ("\(cwRunning)/2 running", .normal),
+                          (cwRPMStr, .normal),
                           (cwFlowStr, .normal),
                       ], active: cwRunning > 0)
 
@@ -622,8 +610,8 @@ struct TerminalLayout {
         if dieselY < top + height {
             let d1 = state.dieselGenerators[0]
             let d2 = state.dieselGenerators[1]
-            let d1status = d1.available ? "RUN" : (d1.running ? "START" : "OFF")
-            let d2status = d2.available ? "RUN" : (d2.running ? "START" : "OFF")
+            let d1status = d1.running ? (d1.available ? "RUN" : "START") : "OFF"
+            let d2status = d2.running ? (d2.available ? "RUN" : "START") : "OFF"
             buffer.putString(x: left, y: dieselY, string: "DG-1:\(d1status) DG-2:\(d2status)", fg: .dim)
         }
 
@@ -652,7 +640,7 @@ struct TerminalLayout {
         // Adjuster rod positions (compact, no progress bars)
         buffer.putString(x: left, y: row, string: "ADJUSTER RODS (0%=OUT 100%=IN)", fg: .bright)
         row += 1
-        let bankNames = ["A", "B", "C", "D"]
+        let bankNames = ["1", "2", "3", "4"]
         var adjLine = "  "
         for (i, name) in bankNames.enumerated() {
             let pos = 1.0 - state.adjusterPositions[i]
@@ -674,20 +662,18 @@ struct TerminalLayout {
         buffer.putString(x: left, y: row, string: mcaLine, fg: .normal)
         row += 2
 
-        // Shutoff rods
-        buffer.putString(x: left, y: row, string: "SHUTOFF RODS", fg: .bright)
+        // Shutoff rods (0%=out, 100%=in)
+        buffer.putString(x: left, y: row, string: "SHUTOFF RODS (0%=OUT 100%=IN)", fg: .bright)
         row += 1
+        let sorDetailPct = state.shutoffRodInsertionFraction * 100.0
         let sorStatus: String
         let sorColor: TerminalColor
         if state.scramActive {
-            sorStatus = "SCRAM - \(String(format: "%.0f%%", state.shutoffRodInsertionFraction * 100.0)) ins."
+            sorStatus = String(format: "SCRAM — %.0f%%", sorDetailPct)
             sorColor = .danger
-        } else if state.shutoffRodsInserted {
-            sorStatus = "FULLY INSERTED"
-            sorColor = .normal
         } else {
-            sorStatus = "WITHDRAWN"
-            sorColor = .bright
+            sorStatus = String(format: "%.0f%%", sorDetailPct)
+            sorColor = sorDetailPct > 50 ? .warning : .bright
         }
         buffer.putString(x: left + 2, y: row, string: sorStatus, fg: sorColor)
         row += 2
@@ -1175,19 +1161,11 @@ struct TerminalLayout {
                 return ["> set tertiary.pump.1.rpm 150",
                         "  (low RPM — stay under 10 MW DG)"]
             }
-            // Primary pumps at minimal RPM, one at a time
+            // Primary pumps at minimal RPM (all 4, negligible load at 150)
             let phtRunning = state.primaryPumps.filter { $0.running }.count
-            if phtRunning == 0 {
-                return ["> set primary.pump.1.rpm 150",
-                        "  (low RPM — stay under 10 MW DG)"]
-            }
-            if phtRunning < 2 {
-                for i in 0..<4 {
-                    if !state.primaryPumps[i].running {
-                        return ["> set primary.pump.\(i+1)",
-                                "  .rpm 150"]
-                    }
-                }
+            if phtRunning < 4 {
+                return ["> set primary.pump.*.rpm 150",
+                        "  (all 4, low RPM on diesel)"]
             }
             // Feed pump is the largest single load (~3 MW)
             let fpRunning = state.feedPumps.filter { $0.running }.count
@@ -1205,109 +1183,128 @@ struct TerminalLayout {
             // Ensure cooling flow is established before adding reactivity
             let phtRunning = state.primaryPumps.filter { $0.running }.count
             if phtRunning == 0 {
-                return ["> set primary.pump.1.rpm 150",
+                return ["> set primary.pump.*.rpm 150",
                         "  (need flow before rods!)"]
             }
-            let cwRunning = state.coolingWaterPumps.filter { $0.running }.count
-            if cwRunning == 0 {
-                return ["> set tertiary.pump.1.rpm 150",
-                        "  (need CW flow before rods!)"]
+
+            // After bank 1, ensure adequate cooling flow before adding more reactivity
+            let banksOut = state.adjusterTargetPositions.filter { $0 > 0.9 }.count
+            let flowFraction = state.primaryFlowRate / CANDUConstants.totalRatedFlow
+            if banksOut >= 1 && flowFraction < 0.40 {
+                let flowPct = Int(flowFraction * 100)
+                return ["> set primary.pump.*.rpm 900",
+                        "  (flow \(flowPct)% — need >40% for power rise)"]
             }
 
-            // Withdraw adjuster banks one at a time
-            // (all at once adds ~15 mk instantly → high log rate SCRAM)
-            let bankNames = ["a", "b", "c", "d"]
-            for (i, name) in bankNames.enumerated() {
+            // Withdraw adjuster banks 1-2 (enough for ~30% power with zones at 100%)
+            for i in 0..<2 {
                 let target = state.adjusterTargetPositions[i]
                 let actual = state.adjusterPositions[i]
-                // Bank is still moving toward target
                 if target > 0.9 && actual < 0.9 {
                     let pct = Int(actual * 100)
-                    return ["Bank \(name.uppercased()) withdrawing... \(pct)%"]
+                    return ["Bank \(i+1) withdrawing... \(pct)%",
+                            "  (~\(Int(Double(100 - pct) * 0.6))s remaining)"]
                 }
-                // Bank hasn't been commanded yet
                 if target < 0.9 {
-                    let pct = state.thermalPowerFraction * 100.0
-                    if pct > 0.5 {
-                        return ["Power rising — wait for it",
-                                "to stabilize before bank \(name.uppercased())"]
-                    }
-                    var lines = ["> set core.adjuster-rods",
-                                 "  .bank-\(name).pos 0"]
+                    var lines = ["> set core.adjuster-rods.\(i+1).pos 0"]
                     if state.timeAcceleration > 1.0 {
-                        lines.append("  (consider: speed 0.5)")
+                        lines.append("  (consider: time 0.5)")
                     }
                     return lines
                 }
             }
-            // MCAs — one at a time
-            for i in 0..<2 {
-                let target = state.mcaTargetPositions[i]
-                let actual = state.mcaPositions[i]
-                if target > 0.9 && actual < 0.9 {
-                    let pct = Int(actual * 100)
-                    return ["MCA-\(i+1) withdrawing... \(pct)%"]
-                }
-                if target < 0.9 {
-                    let pct = state.thermalPowerFraction * 100.0
-                    if pct > 0.5 {
-                        return ["Power rising — wait for it",
-                                "to stabilize before MCA-\(i+1)"]
-                    }
-                    return ["> set core.mca.\(i+1).pos 0"]
-                }
-            }
-            let zoneFillHigh = state.zoneControllerFills.allSatisfy { $0 > 60 }
-            if zoneFillHigh {
-                return ["> set core.zone-controllers",
-                        "  .zone-*.fill 50"]
-            }
-            return ["Monitoring neutron density..."]
+            // Both banks out — wait for neutron density to rise
+            return ["Approaching criticality...",
+                    "  (waiting for power to build)"]
         }
 
         if order.contains("ACHIEVE") && order.contains("FULL POWER") {
-            // Extract target percentage
             let pct = state.thermalPowerFraction * 100.0
             if let target = extractPowerTarget(from: order) {
-                if state.turbineGovernor < 0.1 && target >= 25.0 {
-                    return ["> set secondary.turbine",
-                            "  .governor 0.5"]
-                }
-                if !state.generatorConnected && pct > 5 {
-                    return ["Sync generator to grid"]
-                }
-                // After grid sync: ramp pumps to match power target
-                if state.generatorConnected {
-                    let pumpRPMTarget: Double
-                    if target >= 85 {
-                        pumpRPMTarget = 1500
-                    } else if target >= 75 {
-                        pumpRPMTarget = 1200
-                    } else if target >= 50 {
-                        pumpRPMTarget = 1000
-                    } else {
-                        pumpRPMTarget = 500
+                // Before grid sync: get turbine going
+                if !state.generatorConnected {
+                    if state.turbineGovernor < 0.1 {
+                        return ["> set secondary.turbine.governor 1.0"]
                     }
-                    let maxPrimaryRPM = state.primaryPumps.filter { $0.running }.map { $0.targetRPM }.max() ?? 0
-                    if maxPrimaryRPM < pumpRPMTarget {
-                        let rpm = Int(pumpRPMTarget)
-                        return ["> set primary.pump.*.rpm \(rpm)",
-                                "  (ramp flow for \(Int(target))% power)"]
+                    let freq = state.generatorFrequency
+                    if freq > 59.5 && freq < 60.5 {
+                        return ["> start electrical.grid.sync"]
                     }
-                    let maxCWRPM = state.coolingWaterPumps.filter { $0.running }.map { $0.targetRPM }.max() ?? 0
-                    if maxCWRPM < pumpRPMTarget {
-                        let rpm = Int(pumpRPMTarget)
-                        return ["> set tertiary.pump.1",
-                                "  .rpm \(rpm)"]
+                    if state.turbineRPM < 100 {
+                        return ["Need 0.5 MPa steam to spin turbine",
+                                "  wait for power to build"]
+                    }
+                    return ["Turbine spinning up...",
+                            "  \(String(format: "%.1f", freq)) Hz (need 60 Hz)"]
+                }
+                // After grid sync: stop diesels if still running
+                let dieselsRunning = state.dieselGenerators.filter { $0.running }.count
+                if dieselsRunning > 0 {
+                    return ["> stop aux.diesel.*",
+                            "  (grid is supplying station service)"]
+                }
+                // Start additional feed pumps (need 3 for full power)
+                let fpRunning = state.feedPumps.filter { $0.running }.count
+                if fpRunning < 3 {
+                    let avgSGLevel = state.sgLevels.reduce(0.0, +) / 4.0
+                    if fpRunning < 2 || avgSGLevel < 45 {
+                        return ["> start secondary.feed-pump.\(fpRunning + 1).auto",
+                                "  (need \(3 - fpRunning) more for full power)"]
                     }
                 }
+                // Ramp pumps to full flow now that grid is available
+                let phtFlowFrac = state.primaryFlowRate / CANDUConstants.totalRatedFlow
+                if phtFlowFrac < 0.90 {
+                    let flowPct = Int(phtFlowFrac * 100)
+                    return ["> set primary.pump.*.rpm 1500",
+                            "  (flow \(flowPct)% — need full flow)"]
+                }
+                let cwFlowFrac = state.coolingWaterFlow / CANDUConstants.coolingWaterFlowRated
+                if cwFlowFrac < 0.80 {
+                    return ["> set tertiary.pump.*.rpm 1500"]
+                }
+                // Check if more feed pumps needed (SG levels dropping)
+                if fpRunning < 3 {
+                    let avgSGLevel2 = state.sgLevels.reduce(0.0, +) / 4.0
+                    if avgSGLevel2 < 40 {
+                        return ["> start secondary.feed-pump.\(fpRunning + 1).auto",
+                                "  (SG levels low — add feed pump)"]
+                    }
+                }
+                // Raise power by lowering zones and withdrawing rods
                 let diff = pct - target
                 if diff < -5 {
-                    return ["Withdraw rods / lower zone",
-                            "fills to raise power"]
+                    // Need more power — lower zones or withdraw rods
+                    let avgZone = state.zoneControllerFills.reduce(0.0, +) / 6.0
+                    let banksOut = state.adjusterTargetPositions.filter { $0 > 0.9 }.count
+                    let mcasOut = state.mcaTargetPositions.filter { $0 > 0.9 }.count
+                    // First: lower zones from 100 toward 50
+                    if avgZone > 55 {
+                        let newFill = max(Int(avgZone) - 20, 50)
+                        return ["> set core.zone-controllers.*.fill \(newFill)",
+                                "  (lower zones to raise power)"]
+                    }
+                    // Then: withdraw more adj banks
+                    if banksOut < 4 {
+                        let nextBank = banksOut + 1
+                        return ["> set core.adjuster-rods.\(nextBank).pos 0",
+                                "  (withdraw bank \(nextBank) for more power)"]
+                    }
+                    // Then: withdraw MCAs
+                    if mcasOut < 2 {
+                        let nextMCA = mcasOut + 1
+                        return ["> set core.mca.\(nextMCA).pos 0",
+                                "  (withdraw MCA-\(nextMCA) for more power)"]
+                    }
+                    // All rods out: lower zones further
+                    if avgZone > 10 {
+                        let newFill = max(Int(avgZone) - 10, 0)
+                        return ["> set core.zone-controllers.*.fill \(newFill)",
+                                "  (lower zones to raise power)"]
+                    }
+                    return ["Power rising..."]
                 } else if diff > 5 {
-                    return ["Insert rods / raise zone",
-                            "fills to lower power"]
+                    return ["Raise zone fills to lower power"]
                 } else {
                     return ["Hold steady — stabilizing"]
                 }

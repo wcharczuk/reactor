@@ -33,11 +33,11 @@ struct CANDUConstants {
     static let adjusterTotalWorth: Double = 15.0   // mk total
     static let mcaWorth: Double = 5.0              // mk per MCA device (2 devices)
     static let mcaTotalWorth: Double = 10.0        // mk total
-    static let zoneControlTotalWorth: Double = 3.0 // mk total (symmetric about 0)
+    static let zoneControlTotalWorth: Double = 7.0 // mk total (symmetric about 0)
     static let shutoffRodWorth: Double = 80.0      // mk total (all SORs)
 
     // --- Reactivity Feedback Coefficients ---
-    static let dopplerCoefficient: Double = -0.014   // mk/degC (negative = stabilizing)
+    static let dopplerCoefficient: Double = -0.01    // mk/degC (negative = stabilizing)
     static let coolantTempCoefficient: Double = 0.028 // mk/degC (positive in CANDU)
     static let fuelTempReference: Double = 25.0       // degC
     static let coolantTempReference: Double = 25.0    // degC
@@ -45,7 +45,7 @@ struct CANDUConstants {
     // --- Thermal-Hydraulic ---
     static let fuelHeatCapacity: Double = 300.0       // kJ/degC (effective whole-core)
     static let coolantHeatCapacity: Double = 600.0    // kJ/degC (primary D2O in core)
-    static let fuelToCoolantResistance: Double = 0.005 // degC/kW at rated flow
+    static let fuelToCoolantResistance: Double = 0.0008 // degC/kW at rated flow
     static let coolantToSGResistance: Double = 0.008  // degC/kW at rated conditions
 
     // --- Primary Loop ---
@@ -71,7 +71,7 @@ struct CANDUConstants {
     static let turbineEfficiency: Double = 0.34       // overall cycle efficiency
     static let condenserPressureRated: Double = 0.005 // MPa (~5 kPa)
     static let condenserTempRated: Double = 33.0      // degC
-    static let sgUA: Double = 12000.0                 // kW/degC (effective UA for all 4 SGs)
+    static let sgUA: Double = 80000.0                 // kW/degC (effective UA for all 4 SGs)
 
     // --- Tertiary Loop ---
     static let coolingWaterInletTemp: Double = 18.0   // degC (lake/river)
@@ -82,7 +82,7 @@ struct CANDUConstants {
     // --- Electrical ---
     static let generatorEfficiency: Double = 0.985    // electrical efficiency
     static let generatorPoles: Int = 4
-    static let stationServiceBase: Double = 70.0      // MW base load
+    static let stationServiceBase: Double = 30.0      // MW base load (pumps added separately)
     static let dieselPower: Double = 5.0              // MW each
     static let dieselStartTime: Double = 30.0          // seconds
     static let emergencyServiceBase: Double = 2.0      // MW (control room + instruments on diesel)
@@ -101,7 +101,7 @@ struct CANDUConstants {
     // Xenon-135 microscopic absorption cross section * flux scaling
     static let sigmaXenonPhi: Double = 3.0e-5         // 1/s per unit neutron density
     // Xenon reactivity coefficient (mk per unit xenon concentration)
-    static let xenonReactivityCoeff: Double = -28.0    // mk at equilibrium full power
+    static let xenonReactivityCoeff: Double = -15.0    // mk at equilibrium full power
 
     // --- Safety ---
     static let scramInsertionTime: Double = 2.0       // seconds for full shutoff rod insertion
@@ -203,7 +203,7 @@ final class ReactorState {
     var primaryPumps: [PumpState] = [.off(), .off(), .off(), .off()]
 
     // --- Secondary Loop ---
-    var steamPressure: Double = 0.1    // MPa
+    var steamPressure: Double = 0.0004  // MPa (saturated at ~25C)
     var steamTemp: Double = 25.0       // degC
     var steamFlow: Double = 0.0        // kg/s
     var feedwaterTemp: Double = 25.0   // degC
@@ -223,7 +223,7 @@ final class ReactorState {
     // --- Electrical ---
     var grossPower: Double = 0.0          // MW_e
     var netPower: Double = 0.0            // MW_e
-    var stationServiceLoad: Double = 70.0 // MW_e
+    var stationServiceLoad: Double = 30.0 // MW_e
     var generatorFrequency: Double = 0.0  // Hz
     var generatorConnected: Bool = false
     var dieselGenerators: [DieselGeneratorState] = [.off(), .off()]
@@ -238,6 +238,8 @@ final class ReactorState {
     var scramActive: Bool = false
     var scramTime: Double = -1.0
     var alarms: [Alarm] = []
+    /// Tracks which process alarms have been raised (to avoid spamming).
+    var raisedProcessAlarms: Set<String> = []
 
     // --- Game ---
     var elapsedTime: Double = 0.0
@@ -359,7 +361,7 @@ final class ReactorState {
         state.primaryFlowRate = 0.0
         state.primaryPumps = [.off(), .off(), .off(), .off()]
 
-        state.steamPressure = 0.1
+        state.steamPressure = 0.0004
         state.steamTemp = 25.0
         state.steamFlow = 0.0
         state.feedwaterTemp = 25.0

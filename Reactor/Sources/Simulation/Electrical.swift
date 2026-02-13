@@ -22,7 +22,7 @@ enum Electrical {
             // Mechanical power to electrical
             // P_mech from steam: mdot * delta_h * eta_turbine
             let steamToTurbine = state.steamFlow * state.turbineGovernor
-            let enthalpyDrop: Double = 800.0 // kJ/kg
+            let enthalpyDrop: Double = 2090.0 // kJ/kg
             let mechPowerMW = steamToTurbine * enthalpyDrop * CANDUConstants.turbineEfficiency / 1000.0
             let grossElectrical = mechPowerMW * CANDUConstants.generatorEfficiency
 
@@ -54,7 +54,7 @@ enum Electrical {
 
     private static func updateStationService(state: ReactorState) {
         // Station service load: base + pumps + auxiliaries
-        var load = CANDUConstants.stationServiceBase // 70 MW base
+        var load = CANDUConstants.stationServiceBase // 30 MW base (non-pump loads)
 
         // Primary pump power
         for pump in state.primaryPumps {

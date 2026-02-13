@@ -71,12 +71,9 @@ enum Neutronics {
     /// where t is time since shutdown in seconds.
     private static func computeDecayHeat(state: ReactorState) -> Double {
         guard state.scramActive || state.shutdownTime > 0 else {
-            // If no shutdown has occurred, decay heat is negligible at low power
-            // At meaningful power levels, decay heat is lumped into the fission term
-            if state.neutronDensity > 0.001 {
-                // Approximate steady-state decay heat as ~7% of fission power
-                return 0.07 * state.neutronDensity * CANDUConstants.ratedThermalPower
-            }
+            // During normal operation, decay heat is implicitly included in the
+            // rated thermal power definition (n=1.0 → thermalPower = ratedThermalPower).
+            // Separate decay heat is only tracked after SCRAM/shutdown.
             return 0.0
         }
 

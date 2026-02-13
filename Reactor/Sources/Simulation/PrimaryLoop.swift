@@ -120,8 +120,10 @@ enum PrimaryLoop {
             let sgApproach: Double = 8.0 // degC approach temperature above secondary
             let targetInlet: Double
 
-            if state.steamTemp > 50.0 {
-                targetInlet = state.steamTemp + sgApproach / max(flowFraction, 0.1)
+            if state.steamTemp > 50.0 && state.thermalPower > 1.0 {
+                // SG approach temperature: slightly above secondary side temp
+                // At low flow, heat transfer is worse but approach is bounded
+                targetInlet = state.steamTemp + sgApproach / max(flowFraction, 0.5)
             } else {
                 // No steam generation, SGs aren't effective heat sinks
                 // Inlet temperature slowly approaches outlet temperature (no cooling)
